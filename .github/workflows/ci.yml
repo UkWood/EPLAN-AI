@@ -38,6 +38,12 @@ jobs:
           dotnet restore .\tests\Audeu.EplanAi.LegacyHost.Tests\Audeu.EplanAi.LegacyHost.Tests.csproj -p:SkipEplanApiValidation=true
           dotnet test .\tests\Audeu.EplanAi.LegacyHost.Tests\Audeu.EplanAi.LegacyHost.Tests.csproj -c Release --no-restore -p:SkipEplanApiValidation=true
 
+      - name: Restore and test AddIn dispatch with API stubs
+        shell: pwsh
+        run: |
+          dotnet restore .\tests\Audeu.EplanAi.AddIn.IntegrationTests\Audeu.EplanAi.AddIn.IntegrationTests.csproj -p:UseEplanApiStubs=true
+          dotnet test .\tests\Audeu.EplanAi.AddIn.IntegrationTests\Audeu.EplanAi.AddIn.IntegrationTests.csproj -c Release --no-restore -p:UseEplanApiStubs=true
+
       - name: Restore and build MCP shell
         shell: pwsh
         run: |
