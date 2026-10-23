@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Audeu.EplanAi.LegacyHost</AssemblyName>
+    <RootNamespace>Audeu.EplanAi.LegacyHost</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Audeu.EplanAi.Contracts\Audeu.EplanAi.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EplanRequiredAssembly Include="$(EplanApi29Dir)\Eplan.EplApi.RemoteClientu.dll" />
+    <EplanRequiredAssembly Include="$(EplanApi29Dir)\Eplan.EplApi.Remotingu.dll" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(EplanApi29Dir)' != ''">
+    <Reference Include="Eplan.EplApi.RemoteClientu" HintPath="$(EplanApi29Dir)\Eplan.EplApi.RemoteClientu.dll" Private="false" />
+    <Reference Include="Eplan.EplApi.Remotingu" HintPath="$(EplanApi29Dir)\Eplan.EplApi.Remotingu.dll" Private="false" />
+  </ItemGroup>
+</Project>

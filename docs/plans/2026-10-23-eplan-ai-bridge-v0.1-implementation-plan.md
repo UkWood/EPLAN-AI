@@ -25,7 +25,7 @@ A .NET 8 stdio MCP server talks over a current-user-only named pipe to a .NET Fr
 - No TCP/HTTP listener.
 - No arbitrary EPLAN Action execution.
 - No arbitrary EPLAN property ID exposed through MCP.
-- No arbitrary filesystem path accepted from MCP.
+- No arbitrary filesystem paths accepted from MCP.
 - All writes require an immutable previewed change plan.
 - Object references are valid only inside the current project session.
 - Integration tests use a disposable EPLAN test project.
@@ -90,8 +90,10 @@ Create the solution/project skeleton and document the target EPLAN workstation r
   - LegacyHost: `net472`
   - AddIn: `net472`
   - MCP: `net8.0`
-  - normal tests: `net8.0`
-  - EPLAN integration tests: `net472`
+  - Contracts/MCP tests: `net8.0`
+  - LegacyHost/AddIn integration tests: `net472`
+
+**Ruling 2026-10-23:** `Audeu.EplanAi.LegacyHost.Tests` targets `net472`, not `net8.0`, because it directly references the `net472` LegacyHost project. Keeping this test project on `net8.0` would create an invalid project-reference boundary.
 
 ### Gate
 Before proceeding, verify on the target workstation:

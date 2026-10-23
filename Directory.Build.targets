@@ -1,0 +1,10 @@
+<Project>
+  <Target Name="ValidateEplanApi29Dir"
+          BeforeTargets="ResolveReferences"
+          Condition="'@(EplanRequiredAssembly)' != ''">
+    <Error Condition="'$(EplanApi29Dir)' == '' Or !Exists('$(EplanApi29Dir)')"
+           Text="EplanApi29Dir must point to the EPLAN 2.9 API assembly directory." />
+    <Error Condition="!Exists('%(EplanRequiredAssembly.Identity)')"
+           Text="Required EPLAN 2.9 API assembly not found: %(EplanRequiredAssembly.Identity)" />
+  </Target>
+</Project>

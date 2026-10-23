@@ -1,0 +1,32 @@
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Packages / restore
+packages/
+.nuget/
+
+# Local EPLAN integration data
+.local/
+.eplan-local/
+*.elk
+*.zw1
+
+# Local bridge runtime data
+Audeu/EplanAiBridge/requests/
+Audeu/EplanAiBridge/responses/
+
+# OS
+Thumbs.db
+.DS_Store
