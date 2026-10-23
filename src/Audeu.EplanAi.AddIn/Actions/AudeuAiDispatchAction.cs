@@ -63,12 +63,10 @@ namespace Audeu.EplanAi.AddIn.Actions
 
         public void GetActionProperties(ref ActionProperties actionProperties)
         {
-            if (actionProperties == null)
+            if (actionProperties != null)
             {
-                actionProperties = new ActionProperties();
+                actionProperties.Description = "Dispatches validated local EPLAN AI Bridge requests.";
             }
-
-            actionProperties.Description = "Dispatches validated local EPLAN AI Bridge requests.";
         }
     }
 }
