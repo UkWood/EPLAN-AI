@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Audeu.EplanAi.Contracts\Audeu.EplanAi.Contracts.csproj" />
+    <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
 
   <ItemGroup>
