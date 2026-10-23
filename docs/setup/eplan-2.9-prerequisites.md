@@ -2,28 +2,27 @@
 
 This document defines the mandatory workstation checks before EPLAN-dependent implementation is treated as validated.
 
-## 1. Record the installed EPLAN build
+## 1. Recorded target workstation
 
-On the target Windows workstation, record:
+Confirmed on 2026-10-23:
 
-- EPLAN product/variant;
-- exact EPLAN Platform version/build;
-- installation directory;
-- EPLAN `Bin` directory.
+- Product: **EPLAN Electric P8 Professional (64-bit)**;
+- Version: **2.9 SP1 Update 4**;
+- Build: **14773**;
+- Platform installation: `C:\Program Files\EPLAN\Platform\2.9.4`;
+- EPLAN `Bin` directory / `EplanApi29Dir`: `C:\Program Files\EPLAN\Platform\2.9.4\Bin`.
 
-Expected major/minor target for this project: **EPLAN Platform 2.9**.
+Expected major/minor target for this project remains **EPLAN Platform 2.9**.
 
 Do not point the project at assemblies from another EPLAN major/minor release.
 
-## 2. Confirm API development entitlement
+## 2. API development entitlement
 
-Confirm that the target installation/account has the EPLAN API/API Extension capability required to load and execute the planned compiled add-in.
+Confirmed on 2026-10-23: the target workstation has **EPLAN API / API Extension** available for the planned compiled add-in path.
 
-Record the result in `docs/PROJECT_STATE.md`.
+If this capability becomes unavailable on the target environment, the add-in path must stop and be re-scoped explicitly; do not silently switch the project to GUI automation.
 
-If the required API capability is unavailable, Gate A fails. Stop the add-in implementation path and re-scope explicitly; do not silently switch the project to GUI automation.
-
-## 3. Locate the EPLAN 2.9 API assemblies
+## 3. Verified EPLAN 2.9 API assemblies
 
 The build uses the MSBuild property:
 
@@ -31,9 +30,13 @@ The build uses the MSBuild property:
 EplanApi29Dir
 ```
 
-It must point to the directory containing the EPLAN 2.9 API assemblies, normally the EPLAN Platform `Bin` directory.
+Confirmed value:
 
-The initial projects require these files.
+```text
+C:\Program Files\EPLAN\Platform\2.9.4\Bin
+```
+
+The workstation directory listing confirms the required files.
 
 ### Add-in
 
@@ -51,11 +54,13 @@ Eplan.EplApi.RemoteClientu.dll
 Eplan.EplApi.Remotingu.dll
 ```
 
-Do not copy these binaries into the Git repository.
+Additional EPLAN API assemblies are present, including `Eplan.EplApi.EServicesu.dll`, `Eplan.EplApi.Guiu.dll`, `Eplan.EplApi.MasterDatau.dll`, `Eplan.EplApi.Starteru.dll`, and `Eplan.EplApi.Systemu.dll`.
 
-## 4. Build with a local EPLAN path
+Do not copy EPLAN binaries into the Git repository.
 
-Example from Developer PowerShell / PowerShell:
+## 4. Build with the verified local EPLAN path
+
+From Developer PowerShell / PowerShell on the target workstation:
 
 ```powershell
 $eplanBin = 'C:\Program Files\EPLAN\Platform\2.9.4\Bin'
@@ -69,7 +74,7 @@ dotnet build .\src\Audeu.EplanAi.LegacyHost\Audeu.EplanAi.LegacyHost.csproj `
   -p:EplanApi29Dir="$eplanBin"
 ```
 
-The example path is illustrative only. Use the actual installed EPLAN 2.9 `Bin` directory.
+This positive local build remains an execution check to perform when the branch is tested on the EPLAN workstation.
 
 ## 5. Negative guard check
 
@@ -87,7 +92,9 @@ EplanApi29Dir must point to the EPLAN 2.9 API assembly directory.
 
 This is intentional. It prevents accidental compilation against unknown or mismatched EPLAN assemblies.
 
-## 6. Minimal add-in load check
+GitHub Actions already verifies this negative guard for both AddIn and LegacyHost.
+
+## 6. Minimal add-in load check — Gate A2
 
 When Task 4 supplies the minimal add-in:
 
@@ -97,11 +104,11 @@ When Task 4 supplies the minimal add-in:
 4. confirm the add-in lifecycle is invoked;
 5. confirm action `AudeuAiDispatch` is registered.
 
-Gate A is not fully complete until the target workstation can load the add-in.
+This is a runtime integration check and cannot be completed before Task 4 supplies the implementation.
 
-## 7. Remoting check
+## 7. Remoting check — Gate A2
 
-EPLAN 2.9 Remoting uses the EPLAN RemoteClient libraries. The first integration check must confirm that a small client can:
+EPLAN 2.9 Remoting uses the EPLAN RemoteClient libraries. Task 4/6 integration must confirm that a small client can:
 
 1. discover or address the local EPLAN instance;
 2. connect;
@@ -112,18 +119,28 @@ The default port documented by EPLAN 2.9 is `49155`, but implementation should p
 
 ## 8. Gate A record
 
-Update the following table when performed on the real workstation.
+Gate A is tracked in two parts so implementation is not blocked by runtime checks whose code does not exist yet.
+
+### Gate A1 — development environment
 
 | Check | Result | Evidence / value |
 |---|---|---|
-| Exact EPLAN 2.9 build recorded | Pending | |
-| API/API Extension entitlement confirmed | Pending | |
-| `EplanApi29Dir` recorded | Pending | |
-| Required AddIn DLLs present | Pending | |
-| Required Remoting DLLs present | Pending | |
+| Exact EPLAN 2.9 build recorded | PASS | Electric P8 Professional 64-bit, 2.9 SP1 Update 4, build 14773 |
+| API/API Extension entitlement confirmed | PASS | User confirmed available on target workstation |
+| `EplanApi29Dir` recorded | PASS | `C:\Program Files\EPLAN\Platform\2.9.4\Bin` |
+| Required AddIn DLLs present | PASS | `AFu`, `Baseu`, `DataModelu`, `HEServicesu` present in supplied directory listing |
+| Required Remoting DLLs present | PASS | `RemoteClientu`, `Remotingu` present in supplied directory listing |
+
+**Gate A1 outcome: PASS.** Tasks 2 and 3 may proceed.
+
+### Gate A2 — runtime integration
+
+| Check | Result | Evidence / value |
+|---|---|---|
+| Positive AddIn build against verified assemblies | Pending | Target-workstation execution |
 | Add-in can load | Pending | Task 4 |
+| `AudeuAiDispatch` registers | Pending | Task 4 |
 | RemoteClient can connect | Pending | Task 4/6 |
+| Fixed action round-trip succeeds | Pending | Task 4/6 |
 
-## Gate A outcome
-
-**Current status: PENDING — requires execution on the actual EPLAN 2.9 workstation.**
+**Gate A2 outcome: PENDING by design.** It becomes executable during Tasks 4–6 and is required before Gate B / M0 is accepted.
