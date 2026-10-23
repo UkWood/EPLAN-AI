@@ -45,6 +45,7 @@ jobs:
             throw "AddIn build failed, but did not contain the expected prerequisite message: $expected"
           }
           Write-Host 'Expected AddIn prerequisite guard verified.'
+          exit 0
 
       - name: Verify LegacyHost fails clearly without EPLAN API path
         shell: pwsh
@@ -59,3 +60,4 @@ jobs:
             throw "LegacyHost build failed, but did not contain the expected prerequisite message: $expected"
           }
           Write-Host 'Expected LegacyHost prerequisite guard verified.'
+          exit 0
