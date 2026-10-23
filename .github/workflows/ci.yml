@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'm0/**'
+  pull_request:
+
+jobs:
+  scaffold:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore and build Contracts
+        shell: pwsh
+        run: |
+          dotnet restore .\src\Audeu.EplanAi.Contracts\Audeu.EplanAi.Contracts.csproj
+          dotnet build .\src\Audeu.EplanAi.Contracts\Audeu.EplanAi.Contracts.csproj -c Release --no-restore
+
+      - name: Restore and build MCP shell
+        shell: pwsh
+        run: |
+          dotnet restore .\src\Audeu.EplanAi.Mcp\Audeu.EplanAi.Mcp.csproj
+          dotnet build .\src\Audeu.EplanAi.Mcp\Audeu.EplanAi.Mcp.csproj -c Release --no-restore
+
+      - name: Verify AddIn fails clearly without EPLAN API path
+        shell: pwsh
+        run: |
+          $expected = 'EplanApi29Dir must point to the EPLAN 2.9 API assembly directory.'
+          $output = (& dotnet build .\src\Audeu.EplanAi.AddIn\Audeu.EplanAi.AddIn.csproj -c Release 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0) {
+            throw 'AddIn build unexpectedly succeeded without EplanApi29Dir.'
+          }
+          if (-not $output.Contains($expected)) {
+            Write-Host $output
+            throw "AddIn build failed, but did not contain the expected prerequisite message: $expected"
+          }
+          Write-Host 'Expected AddIn prerequisite guard verified.'
+
+      - name: Verify LegacyHost fails clearly without EPLAN API path
+        shell: pwsh
+        run: |
+          $expected = 'EplanApi29Dir must point to the EPLAN 2.9 API assembly directory.'
+          $output = (& dotnet build .\src\Audeu.EplanAi.LegacyHost\Audeu.EplanAi.LegacyHost.csproj -c Release 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0) {
+            throw 'LegacyHost build unexpectedly succeeded without EplanApi29Dir.'
+          }
+          if (-not $output.Contains($expected)) {
+            Write-Host $output
+            throw "LegacyHost build failed, but did not contain the expected prerequisite message: $expected"
+          }
+          Write-Host 'Expected LegacyHost prerequisite guard verified.'
