@@ -32,6 +32,12 @@ jobs:
           dotnet restore .\tests\Audeu.EplanAi.Contracts.Tests\Audeu.EplanAi.Contracts.Tests.csproj
           dotnet test .\tests\Audeu.EplanAi.Contracts.Tests\Audeu.EplanAi.Contracts.Tests.csproj -c Release --no-restore
 
+      - name: Restore and test LegacyHost spool
+        shell: pwsh
+        run: |
+          dotnet restore .\tests\Audeu.EplanAi.LegacyHost.Tests\Audeu.EplanAi.LegacyHost.Tests.csproj -p:SkipEplanApiValidation=true
+          dotnet test .\tests\Audeu.EplanAi.LegacyHost.Tests\Audeu.EplanAi.LegacyHost.Tests.csproj -c Release --no-restore -p:SkipEplanApiValidation=true
+
       - name: Restore and build MCP shell
         shell: pwsh
         run: |
