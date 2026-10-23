@@ -2,7 +2,7 @@
 
 **Project:** EPLAN AI Bridge  
 **Repository:** `UkWood/EPLAN-AI`  
-**Target platform:** EPLAN 2.9  
+**Target platform:** EPLAN Electric P8 Professional 64-bit, 2.9 SP1 Update 4, build 14773  
 **Current release target:** `0.1`  
 **Updated:** 2026-10-23
 
@@ -39,6 +39,25 @@ Key rule: the LLM does not receive unrestricted EPLAN API access. It works throu
 - Architecture decision: `docs/decisions/0001-controlled-mcp-eplan-bridge.md`
 - Gate A procedure: `docs/setup/eplan-2.9-prerequisites.md`
 
+## Verified target workstation
+
+Confirmed on 2026-10-23:
+
+- EPLAN Electric P8 Professional (64-bit);
+- version 2.9 SP1 Update 4;
+- build 14773;
+- EPLAN API / API Extension available;
+- `EplanApi29Dir = C:\Program Files\EPLAN\Platform\2.9.4\Bin`;
+- required add-in DLLs present: `Eplan.EplApi.AFu.dll`, `Baseu.dll`, `DataModelu.dll`, `HEServicesu.dll`;
+- required Remoting DLLs present: `Eplan.EplApi.RemoteClientu.dll`, `Remotingu.dll`.
+
+Gate A is split into:
+
+- **Gate A1 — development environment:** PASS;
+- **Gate A2 — runtime integration:** pending until Tasks 4–6 provide code for add-in loading, action registration and RemoteClient round-trip.
+
+This split is intentional: Task 2–3 do not depend on runtime integration code that does not exist yet, while Gate B / M0 still requires Gate A2 to pass.
+
 ## Current status
 
 - [x] Repository created.
@@ -47,9 +66,10 @@ Key rule: the LLM does not receive unrestricted EPLAN API access. It works throu
 - [x] Sequential implementation plan M0 → M1 approved.
 - [x] Repository designated as the source of truth and long-term project memory.
 - [x] Project foundation documentation merged to `main` via PR #1.
-- [ ] Gate A: validate the real EPLAN 2.9 development environment.
-- [~] Task 1: repository scaffold and CI complete; target-workstation Gate A checks still pending. Draft PR #3.
-- [ ] Task 2: versioned bridge contracts.
+- [x] Gate A1: real EPLAN 2.9 development environment validated.
+- [ ] Gate A2: add-in load / dispatch / RemoteClient runtime integration.
+- [x] Task 1 repository scaffold and CI completed on `m0/task-1-scaffold`; PR #3 remains open while runtime proof is tracked separately.
+- [~] Task 2: versioned bridge contracts — next implementation task.
 - [ ] Task 3: secure local spool.
 - [ ] Task 4: load add-in and round-trip `system.status` through `AudeuAiDispatch`.
 - [ ] Gate B / M0: prove read-only bridge on real EPLAN 2.9.
@@ -89,16 +109,12 @@ An earlier run exposed a CI harness defect: PowerShell retained `$LASTEXITCODE =
 
 ## Immediate next actions
 
-1. On the target Windows/EPLAN workstation, complete the Gate A table in `docs/setup/eplan-2.9-prerequisites.md`:
-   - exact EPLAN 2.9 build/version;
-   - API/API Extension entitlement;
-   - exact `EplanApi29Dir`;
-   - required AddIn/Remoting DLLs present.
-2. Task 4 will later prove the minimal add-in load; Task 4/6 will prove RemoteClient connectivity.
-3. Keep PR #3 draft until the workstation-dependent Gate A evidence is recorded.
-4. Do not mark Task 1 / Gate A fully complete until those environment checks are evidenced.
+1. Implement Task 2 on a dedicated branch from the Task 1 head: versioned bridge contracts and contract tests.
+2. Follow RED → GREEN TDD for protocol and change-plan behavior.
+3. Keep runtime checks for Gate A2 explicit and execute them when Task 4/6 make them possible.
+4. Do not mark Gate B / M0 complete until add-in load, dispatch and RemoteClient round-trip pass on the verified workstation.
 
-If API licensing/assemblies are unavailable, stop at Gate A and re-scope. Do not silently replace the architecture with GUI automation.
+If API licensing/assemblies become unavailable, stop the EPLAN integration path and re-scope. Do not silently replace the architecture with GUI automation.
 
 ## Release 0.1 boundaries
 
