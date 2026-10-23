@@ -48,7 +48,7 @@ Key rule: the LLM does not receive unrestricted EPLAN API access. It works throu
 - [x] Repository designated as the source of truth and long-term project memory.
 - [x] Project foundation documentation merged to `main` via PR #1.
 - [ ] Gate A: validate the real EPLAN 2.9 development environment.
-- [~] Task 1: solution scaffold and prerequisite checks — implementation branch `m0/task-1-scaffold`; local EPLAN checks still pending.
+- [~] Task 1: repository scaffold and CI complete; target-workstation Gate A checks still pending. Draft PR #3.
 - [ ] Task 2: versioned bridge contracts.
 - [ ] Task 3: secure local spool.
 - [ ] Task 4: load add-in and round-trip `system.status` through `AudeuAiDispatch`.
@@ -70,21 +70,33 @@ Created on `m0/task-1-scaffold`:
 - Gate A prerequisite documentation;
 - Windows CI for non-EPLAN builds and negative EPLAN-path guard tests.
 
+### CI evidence
+
+GitHub Actions PR run `39959463954` completed successfully on 2026-10-23.
+
+Verified steps:
+
+- Contracts restore/build — success;
+- MCP restore/build — success;
+- AddIn without `EplanApi29Dir` — expected failure detected with the explicit Gate A message;
+- LegacyHost without `EplanApi29Dir` — expected failure detected with the explicit Gate A message.
+
+An earlier run exposed a CI harness defect: PowerShell retained `$LASTEXITCODE = 1` from the intentionally failing negative build even after the expected message was verified. The workflow was corrected to explicitly return success after a validated expected failure. The rerun is green.
+
 ### Ruling
 
 `Audeu.EplanAi.LegacyHost.Tests` targets `net472`, not `net8.0`, because it directly references a `net472` project. Contracts/MCP tests remain `net8.0`; LegacyHost/AddIn integration tests are `net472`. The implementation plan has been corrected accordingly.
 
 ## Immediate next actions
 
-1. Run/confirm GitHub CI for the Task 1 PR.
-2. On the target Windows/EPLAN workstation, complete the Gate A table in `docs/setup/eplan-2.9-prerequisites.md`:
+1. On the target Windows/EPLAN workstation, complete the Gate A table in `docs/setup/eplan-2.9-prerequisites.md`:
    - exact EPLAN 2.9 build/version;
    - API/API Extension entitlement;
    - exact `EplanApi29Dir`;
-   - required AddIn/Remoting DLLs present;
-   - minimal add-in load (Task 4);
-   - RemoteClient connection (Task 4/6).
-3. Do not mark Task 1 / Gate A fully complete until the workstation-dependent checks are evidenced.
+   - required AddIn/Remoting DLLs present.
+2. Task 4 will later prove the minimal add-in load; Task 4/6 will prove RemoteClient connectivity.
+3. Keep PR #3 draft until the workstation-dependent Gate A evidence is recorded.
+4. Do not mark Task 1 / Gate A fully complete until those environment checks are evidenced.
 
 If API licensing/assemblies are unavailable, stop at Gate A and re-scope. Do not silently replace the architecture with GUI automation.
 
