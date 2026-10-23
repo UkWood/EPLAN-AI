@@ -20,7 +20,7 @@ public sealed class ProtocolContractTests
     [InlineData("0.9", false)]
     [InlineData("1.0", true)]
     [InlineData("1.1", false)]
-    public void ProtocolVersion_SupportDetection_IsExplicit(string? version, bool expected)
+    public void ProtocolVersion_SupportDetection_IsExplicit(string version, bool expected)
     {
         Assert.Equal(expected, ProtocolConstants.IsSupported(version));
     }
