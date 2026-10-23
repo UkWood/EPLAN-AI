@@ -12,8 +12,6 @@ This is the living restart point for the project. Update it whenever a meaningfu
 
 ## Approved architecture
 
-The approved architecture is:
-
 ```text
 ChatGPT / MCP client
         |
@@ -39,6 +37,7 @@ Key rule: the LLM does not receive unrestricted EPLAN API access. It works throu
 - Technical design: `docs/design/eplan-ai-bridge-v0.1.md`
 - Implementation plan: `docs/plans/2026-10-23-eplan-ai-bridge-v0.1-implementation-plan.md`
 - Architecture decision: `docs/decisions/0001-controlled-mcp-eplan-bridge.md`
+- Gate A procedure: `docs/setup/eplan-2.9-prerequisites.md`
 
 ## Current status
 
@@ -47,25 +46,45 @@ Key rule: the LLM does not receive unrestricted EPLAN API access. It works throu
 - [x] EPLAN AI Bridge 0.1 architecture approved.
 - [x] Sequential implementation plan M0 → M1 approved.
 - [x] Repository designated as the source of truth and long-term project memory.
+- [x] Project foundation documentation merged to `main` via PR #1.
 - [ ] Gate A: validate the real EPLAN 2.9 development environment.
-- [ ] Task 1: create solution scaffold and prerequisite checks.
+- [~] Task 1: solution scaffold and prerequisite checks — implementation branch `m0/task-1-scaffold`; local EPLAN checks still pending.
 - [ ] Task 2: versioned bridge contracts.
 - [ ] Task 3: secure local spool.
 - [ ] Task 4: load add-in and round-trip `system.status` through `AudeuAiDispatch`.
 - [ ] Gate B / M0: prove read-only bridge on real EPLAN 2.9.
 - [ ] Gate C / M1: prove safe Function Text Preview → Apply → Verify → Undo/Rollback.
 
-## Immediate next action
+## Task 1 implementation state
 
-Begin **Task 1 — Prerequisite probe and solution scaffold**.
+Created on `m0/task-1-scaffold`:
 
-Before EPLAN-dependent code is considered valid, confirm on the target Windows/EPLAN workstation:
+- `EplanAiBridge.sln`;
+- shared MSBuild configuration;
+- central package versions;
+- `netstandard2.0` Contracts shell;
+- `net472` AddIn shell with explicit EPLAN DLL guard;
+- `net472` LegacyHost shell with explicit Remoting DLL guard;
+- `net8.0` MCP shell;
+- four test-project shells;
+- Gate A prerequisite documentation;
+- Windows CI for non-EPLAN builds and negative EPLAN-path guard tests.
 
-1. exact EPLAN 2.9 build/version;
-2. whether EPLAN API/API Extension required for add-in development is installed/licensed;
-3. exact directory containing EPLAN 2.9 API assemblies;
-4. ability to load a minimal add-in;
-5. ability to use `EplanRemoteClient` against the running EPLAN instance.
+### Ruling
+
+`Audeu.EplanAi.LegacyHost.Tests` targets `net472`, not `net8.0`, because it directly references a `net472` project. Contracts/MCP tests remain `net8.0`; LegacyHost/AddIn integration tests are `net472`. The implementation plan has been corrected accordingly.
+
+## Immediate next actions
+
+1. Run/confirm GitHub CI for the Task 1 PR.
+2. On the target Windows/EPLAN workstation, complete the Gate A table in `docs/setup/eplan-2.9-prerequisites.md`:
+   - exact EPLAN 2.9 build/version;
+   - API/API Extension entitlement;
+   - exact `EplanApi29Dir`;
+   - required AddIn/Remoting DLLs present;
+   - minimal add-in load (Task 4);
+   - RemoteClient connection (Task 4/6).
+3. Do not mark Task 1 / Gate A fully complete until the workstation-dependent checks are evidenced.
 
 If API licensing/assemblies are unavailable, stop at Gate A and re-scope. Do not silently replace the architecture with GUI automation.
 
