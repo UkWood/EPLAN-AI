@@ -68,9 +68,9 @@ This split is intentional: Task 2–3 do not depend on runtime integration code 
 - [x] Project foundation documentation merged to `main` via PR #1.
 - [x] Gate A1: real EPLAN 2.9 development environment validated.
 - [ ] Gate A2: add-in load / dispatch / RemoteClient runtime integration.
-- [x] Task 1 repository scaffold and CI completed on `m0/task-1-scaffold`; PR #3 remains open while runtime proof is tracked separately.
-- [~] Task 2: versioned bridge contracts — next implementation task.
-- [ ] Task 3: secure local spool.
+- [x] Task 1: repository scaffold and CI completed on `m0/task-1-scaffold`; PR #3 open.
+- [x] Task 2: versioned bridge contracts completed on `m0/task-2-contracts` with two verified RED → GREEN TDD cycles.
+- [~] Task 3: secure local spool — next implementation task after integration decision on open stacked PRs.
 - [ ] Task 4: load add-in and round-trip `system.status` through `AudeuAiDispatch`.
 - [ ] Gate B / M0: prove read-only bridge on real EPLAN 2.9.
 - [ ] Gate C / M1: prove safe Function Text Preview → Apply → Verify → Undo/Rollback.
@@ -90,9 +90,9 @@ Created on `m0/task-1-scaffold`:
 - Gate A prerequisite documentation;
 - Windows CI for non-EPLAN builds and negative EPLAN-path guard tests.
 
-### CI evidence
+### Task 1 CI evidence
 
-GitHub Actions PR run `39959463954` completed successfully on 2026-10-23.
+GitHub Actions run `39959463954` completed successfully on 2026-10-23.
 
 Verified steps:
 
@@ -103,14 +103,45 @@ Verified steps:
 
 An earlier run exposed a CI harness defect: PowerShell retained `$LASTEXITCODE = 1` from the intentionally failing negative build even after the expected message was verified. The workflow was corrected to explicitly return success after a validated expected failure. The rerun is green.
 
-### Ruling
+### Task 1 ruling
 
 `Audeu.EplanAi.LegacyHost.Tests` targets `net472`, not `net8.0`, because it directly references a `net472` project. Contracts/MCP tests remain `net8.0`; LegacyHost/AddIn integration tests are `net472`. The implementation plan has been corrected accordingly.
 
+## Task 2 implementation state
+
+Branch: `m0/task-2-contracts`  
+Issue: #4
+
+Implemented EPLAN-independent bridge contracts:
+
+- `ProtocolConstants.Version = "1.0"` and explicit supported-version detection;
+- `BridgeRequest` with current protocol and empty arguments defaults;
+- `BridgeResponse` with current protocol and empty warnings defaults;
+- session-scoped `ObjectReference` with `uint` database/type identifiers and `long` object identifier;
+- stable error-code constants introduced only where covered by current tests;
+- `ChangeOperation`;
+- immutable-identity `ChangePlan` with defensive operation-list copy;
+- plan states `previewed`, `applied`, `failed`;
+- allowed transitions only `previewed -> applied|failed`.
+
+### Task 2 TDD evidence
+
+Protocol cycle:
+
+- RED commit `55ee47135c018e4050e908fe070ce1ee9cd16895`, CI run `39972910562`: Contracts production build succeeded; Contracts test step failed before protocol types existed.
+- GREEN commit `aa4a6f80eb802e72196398fa5afbc079ba0d863b`, CI run `39973151995`: protocol tests passed; MCP build and negative EPLAN guards also passed.
+
+Change Plan cycle:
+
+- RED commit `83667208c927c77f51268250145c4c615f02dd01`, CI run `39973445201`: Contracts production build succeeded; Contracts test step failed before ObjectReference / Change Plan contracts existed.
+- GREEN commit `7644502a66d828be20fec8a14cdabe33501eb10b`, CI run `39973746441`: full Contracts tests passed; MCP build and both negative EPLAN guards passed.
+
+No EPLAN assembly or serializer dependency was added to `Audeu.EplanAi.Contracts`.
+
 ## Immediate next actions
 
-1. Implement Task 2 on a dedicated branch from the Task 1 head: versioned bridge contracts and contract tests.
-2. Follow RED → GREEN TDD for protocol and change-plan behavior.
+1. Integrate Task 1 / Task 2 stacked PRs when explicitly approved; do not merge automatically.
+2. Begin Task 3 from the Task 2 head: secure GUID-addressed local spool, again using RED → GREEN TDD.
 3. Keep runtime checks for Gate A2 explicit and execute them when Task 4/6 make them possible.
 4. Do not mark Gate B / M0 complete until add-in load, dispatch and RemoteClient round-trip pass on the verified workstation.
 
