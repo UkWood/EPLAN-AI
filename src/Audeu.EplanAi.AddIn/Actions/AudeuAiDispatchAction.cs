@@ -63,10 +63,9 @@ namespace Audeu.EplanAi.AddIn.Actions
 
         public void GetActionProperties(ref ActionProperties actionProperties)
         {
-            if (actionProperties != null)
-            {
-                actionProperties.Description = "Dispatches validated local EPLAN AI Bridge requests.";
-            }
+            // EPLAN requires this interface member, but the verified 2.9.4
+            // ActionProperties type exposes no Description property.
+            // No metadata is required for bridge execution, so keep this a no-op.
         }
     }
 }
