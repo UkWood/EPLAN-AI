@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Audeu.EplanAi.LegacyHost</AssemblyName>
+    <RootNamespace>Audeu.EplanAi.LegacyHost</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Audeu.EplanAi.Contracts\Audeu.EplanAi.Contracts.csproj" />
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseEplanRemoteClientStubs)' != 'true'">
+    <EplanRequiredAssembly Include="$(EplanApi29Dir)\Eplan.EplApi.RemoteClientu.dll" />
+    <EplanRequiredAssembly Include="$(EplanApi29Dir)\Eplan.EplApi.Remotingu.dll" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(EplanApi29Dir)' != '' And '$(UseEplanRemoteClientStubs)' != 'true'">
+    <Reference Include="Eplan.EplApi.RemoteClientu" HintPath="$(EplanApi29Dir)\Eplan.EplApi.RemoteClientu.dll" Private="true" />
+    <Reference Include="Eplan.EplApi.Remotingu" HintPath="$(EplanApi29Dir)\Eplan.EplApi.Remotingu.dll" Private="true" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseEplanRemoteClientStubs)' == 'true'">
+    <Compile Include="..\..\test-support\EplanRemoteClientStubs.cs" Link="TestOnly\EplanRemoteClientStubs.cs" />
+  </ItemGroup>
+</Project>

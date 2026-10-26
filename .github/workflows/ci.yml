@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'm0/**'
+  pull_request:
+
+jobs:
+  scaffold:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Validate PowerShell scripts with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $failed = $false
+          Get-ChildItem .\scripts -Filter '*.ps1' -File | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName,
+              [ref]$tokens,
+              [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              Write-Host "PowerShell parse errors in $($_.FullName):"
+              $errors | ForEach-Object { Write-Host "  $($_.Message) at $($_.Extent.Text)" }
+            }
+          }
+          if ($failed) {
+            throw 'One or more workstation PowerShell scripts failed Windows PowerShell 5.1 parsing.'
+          }
+          Write-Host 'All workstation PowerShell scripts parse under Windows PowerShell 5.1.'
+
+      - name: Restore and build Contracts
+        shell: pwsh
+        run: |
+          dotnet restore .\src\Audeu.EplanAi.Contracts\Audeu.EplanAi.Contracts.csproj
+          dotnet build .\src\Audeu.EplanAi.Contracts\Audeu.EplanAi.Contracts.csproj -c Release --no-restore
+
+      - name: Restore and test Contracts
+        shell: pwsh
+        run: |
+          dotnet restore .\tests\Audeu.EplanAi.Contracts.Tests\Audeu.EplanAi.Contracts.Tests.csproj
+          dotnet test .\tests\Audeu.EplanAi.Contracts.Tests\Audeu.EplanAi.Contracts.Tests.csproj -c Release --no-restore
+
+      - name: Restore and test LegacyHost spool
+        shell: pwsh
+        run: |
+          dotnet restore .\tests\Audeu.EplanAi.LegacyHost.Tests\Audeu.EplanAi.LegacyHost.Tests.csproj -p:SkipEplanApiValidation=true
+          dotnet test .\tests\Audeu.EplanAi.LegacyHost.Tests\Audeu.EplanAi.LegacyHost.Tests.csproj -c Release --no-restore -p:SkipEplanApiValidation=true
+
+      - name: Print LegacyHost test failure diagnostics
+        if: failure()
+        shell: pwsh
+        run: |
+          $root = '.\tests\Audeu.EplanAi.LegacyHost.Tests\bin\Release\net472\TestResults'
+          if (Test-Path $root) {
+            Get-ChildItem $root -Recurse -Filter '*.log' | ForEach-Object {
+              Write-Host "===== $($_.FullName) ====="
+              Get-Content $_.FullName
+            }
+          }
+
+      - name: Restore and test AddIn dispatch with API stubs
+        shell: pwsh
+        run: |
+          dotnet restore .\tests\Audeu.EplanAi.AddIn.IntegrationTests\Audeu.EplanAi.AddIn.IntegrationTests.csproj -p:UseEplanApiStubs=true
+          dotnet test .\tests\Audeu.EplanAi.AddIn.IntegrationTests\Audeu.EplanAi.AddIn.IntegrationTests.csproj -c Release --no-restore -p:UseEplanApiStubs=true
+
+      - name: Print AddIn test failure diagnostics
+        if: failure()
+        shell: pwsh
+        run: |
+          $root = '.\tests\Audeu.EplanAi.AddIn.IntegrationTests\bin\Release\net472\TestResults'
+          if (Test-Path $root) {
+            Get-ChildItem $root -Recurse -Filter '*.log' | ForEach-Object {
+              Write-Host "===== $($_.FullName) ====="
+              Get-Content $_.FullName
+            }
+          }
+
+      - name: Restore and build MCP shell
+        shell: pwsh
+        run: |
+          dotnet restore .\src\Audeu.EplanAi.Mcp\Audeu.EplanAi.Mcp.csproj
+          dotnet build .\src\Audeu.EplanAi.Mcp\Audeu.EplanAi.Mcp.csproj -c Release --no-restore
+
+      - name: Verify AddIn fails clearly without EPLAN API path
+        shell: pwsh
+        run: |
+          $expected = 'EplanApi29Dir must point to the EPLAN 2.9 API assembly directory.'
+          $output = (& dotnet build .\src\Audeu.EplanAi.AddIn\Audeu.EplanAi.AddIn.csproj -c Release 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0) {
+            throw 'AddIn build unexpectedly succeeded without EplanApi29Dir.'
+          }
+          if (-not $output.Contains($expected)) {
+            Write-Host $output
+            throw "AddIn build failed, but did not contain the expected prerequisite message: $expected"
+          }
+          Write-Host 'Expected AddIn prerequisite guard verified.'
+          exit 0
+
+      - name: Verify LegacyHost fails clearly without EPLAN API path
+        shell: pwsh
+        run: |
+          $expected = 'EplanApi29Dir must point to the EPLAN 2.9 API assembly directory.'
+          $output = (& dotnet build .\src\Audeu.EplanAi.LegacyHost\Audeu.EplanAi.LegacyHost.csproj -c Release 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0) {
+            throw 'LegacyHost build unexpectedly succeeded without EplanApi29Dir.'
+          }
+          if (-not $output.Contains($expected)) {
+            Write-Host $output
+            throw "LegacyHost build failed, but did not contain the expected prerequisite message: $expected"
+          }
+          Write-Host 'Expected LegacyHost prerequisite guard verified.'
+          exit 0
