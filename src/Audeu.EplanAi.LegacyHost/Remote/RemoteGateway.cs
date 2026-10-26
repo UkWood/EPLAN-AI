@@ -184,7 +184,8 @@ namespace Audeu.EplanAi.LegacyHost.Remote
                     && server.Is64Bit
                     && !string.IsNullOrWhiteSpace(server.EplanVersion)
                     && server.EplanVersion.StartsWith("2.9", StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(server.EplanVariant, "Electric P8", StringComparison.OrdinalIgnoreCase))
+                    && !string.IsNullOrWhiteSpace(server.EplanVariant)
+                    && server.EplanVariant.IndexOf("Electric P8", StringComparison.OrdinalIgnoreCase) >= 0)
                 .OrderBy(server => server.ServerPort)
                 .ThenBy(server => server.EplanProcessId)
                 .FirstOrDefault();
