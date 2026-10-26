@@ -50,7 +50,7 @@ function Send-BridgeRequest {
         throw "Task 7 request payload length $($payload.Length) is outside the allowed range."
     }
 
-    $client = New-Object System.IO.Pipes.NamedPipeClientStream(
+    $client = [System.IO.Pipes.NamedPipeClientStream]::new(
         '.',
         $PipeName,
         [System.IO.Pipes.PipeDirection]::InOut,
