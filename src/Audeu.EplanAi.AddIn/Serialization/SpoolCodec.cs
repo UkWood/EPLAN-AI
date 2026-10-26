@@ -50,6 +50,7 @@ namespace Audeu.EplanAi.AddIn.Serialization
             BridgeRequest request;
             using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
+                SkipUtf8Bom(stream);
                 request = (BridgeRequest)new DataContractJsonSerializer(typeof(BridgeRequest)).ReadObject(stream);
             }
 
@@ -110,6 +111,23 @@ namespace Audeu.EplanAi.AddIn.Serialization
                 {
                     File.Delete(tempPath);
                 }
+            }
+        }
+
+        private static void SkipUtf8Bom(Stream stream)
+        {
+            if (stream == null || !stream.CanSeek || stream.Length < 3)
+            {
+                return;
+            }
+
+            var first = stream.ReadByte();
+            var second = stream.ReadByte();
+            var third = stream.ReadByte();
+
+            if (first != 0xEF || second != 0xBB || third != 0xBF)
+            {
+                stream.Position = 0;
             }
         }
 
