@@ -23,6 +23,8 @@ namespace Audeu.EplanAi.LegacyHost.Diagnostics
         {
             using (var adapter = new EplanRemoteClientAdapter())
             {
+                PrintDiscoveredServers(adapter.DiscoverLocalServers());
+
                 var gateway = new RemoteGateway(adapter, new SpoolStore(BridgePaths.CreateDefault()));
                 try
                 {
@@ -119,6 +121,40 @@ namespace Audeu.EplanAi.LegacyHost.Diagnostics
                     gateway.Disconnect();
                 }
             }
+        }
+
+        private static void PrintDiscoveredServers(IReadOnlyList<RemoteServerInfo> servers)
+        {
+            var count = servers == null ? 0 : servers.Count;
+            Console.WriteLine("RemoteClient raw active-server discovery count: " + count.ToString(CultureInfo.InvariantCulture));
+            if (servers == null)
+            {
+                return;
+            }
+
+            for (var index = 0; index < servers.Count; index++)
+            {
+                var server = servers[index];
+                if (server == null)
+                {
+                    Console.WriteLine("  [" + index.ToString(CultureInfo.InvariantCulture) + "] <null>");
+                    continue;
+                }
+
+                Console.WriteLine(
+                    "  [" + index.ToString(CultureInfo.InvariantCulture) + "] "
+                    + "name=" + Safe(server.ServerName)
+                    + "; port=" + server.ServerPort.ToString(CultureInfo.InvariantCulture)
+                    + "; pid=" + server.EplanProcessId.ToString(CultureInfo.InvariantCulture)
+                    + "; variant=" + Safe(server.EplanVariant)
+                    + "; version=" + Safe(server.EplanVersion)
+                    + "; x64=" + server.Is64Bit);
+            }
+        }
+
+        private static string Safe(string value)
+        {
+            return string.IsNullOrEmpty(value) ? "<empty>" : value;
         }
 
         private static async Task<BridgeResponse> Execute(RemoteGateway gateway, BridgeRequest request)
