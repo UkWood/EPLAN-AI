@@ -12,6 +12,6 @@
     <PackageReference Include="xunit.v3" />
     <Reference Include="System.Runtime.Serialization" />
     <ProjectReference Include="..\..\src\Audeu.EplanAi.LegacyHost\Audeu.EplanAi.LegacyHost.csproj"
-                      AdditionalProperties="SkipEplanApiValidation=true" />
+                      AdditionalProperties="SkipEplanApiValidation=true;UseEplanRemoteClientStubs=true" />
   </ItemGroup>
 </Project>
