@@ -4,11 +4,11 @@
 **Repository:** `UkWood/EPLAN-AI`  
 **Target platform:** EPLAN Electric P8 Professional 64-bit, 2.9 SP1 Update 4, build 14773  
 **Current release target:** `0.1`  
-**Updated:** 2026-10-23
+**Updated:** 2026-10-26
 
-## Purpose of this file
+## Purpose
 
-This is the living restart point for the project. Update it whenever a meaningful implementation step, architectural decision, blocker, test result, or milestone changes. A future worker should be able to read this file plus the linked design/plan and continue without relying on chat history.
+Living restart point for the project. Update after every meaningful implementation step, architectural decision, blocker, test result, or milestone change.
 
 ## Approved architecture
 
@@ -18,11 +18,11 @@ ChatGPT / MCP client
         v
 Audeu.EplanAi.Mcp            (.NET 8)
         |
-        | Named Pipe
+        | current-user Named Pipe
         v
 Audeu.EplanAi.LegacyHost     (.NET Framework 4.7.2)
         |
-        | EPLAN Remoting / WCF
+        | EPLAN Remoting
         v
 Audeu.EplanAi.AddIn          (.NET Framework 4.7.2)
         |
@@ -30,172 +30,221 @@ Audeu.EplanAi.AddIn          (.NET Framework 4.7.2)
 EPLAN 2.9 DataModel / HEServices
 ```
 
-Key rule: the LLM does not receive unrestricted EPLAN API access. It works through a small, versioned domain/bridge API with validation and explicit Change Plans.
+The LLM never receives unrestricted EPLAN API access. All operations pass through a small versioned bridge/domain API with fixed operation names, validation and later immutable Change Plans.
 
 ## Approved documents
 
-- Technical design: `docs/design/eplan-ai-bridge-v0.1.md`
-- Implementation plan: `docs/plans/2026-10-23-eplan-ai-bridge-v0.1-implementation-plan.md`
-- Architecture decision: `docs/decisions/0001-controlled-mcp-eplan-bridge.md`
-- Gate A procedure: `docs/setup/eplan-2.9-prerequisites.md`
+- `docs/design/eplan-ai-bridge-v0.1.md`
+- `docs/plans/2026-10-23-eplan-ai-bridge-v0.1-implementation-plan.md`
+- `docs/decisions/0001-controlled-mcp-eplan-bridge.md`
+- `docs/setup/eplan-2.9-prerequisites.md`
+- `docs/setup/task4-local-validation.md`
+- `docs/superpowers/specs/2026-10-26-task-5-readonly-eplan-design.md`
+- `docs/superpowers/plans/2026-10-26-task-5-readonly-eplan.md`
+- `docs/setup/task5-local-validation.md`
+- `docs/superpowers/specs/2026-10-26-task-6-remoteclient-design.md`
+- `docs/superpowers/plans/2026-10-26-task-6-remoteclient.md`
+- `docs/setup/task6-local-validation.md`
 
 ## Verified target workstation
 
-Confirmed on 2026-10-23:
+Confirmed 2026-10-23 and extended by real runtime/build evidence 2026-10-26:
 
-- EPLAN Electric P8 Professional (64-bit);
-- version 2.9 SP1 Update 4;
-- build 14773;
-- EPLAN API / API Extension available;
-- `EplanApi29Dir = C:\Program Files\EPLAN\Platform\2.9.4\Bin`;
-- required add-in DLLs present: `Eplan.EplApi.AFu.dll`, `Baseu.dll`, `DataModelu.dll`, `HEServicesu.dll`;
-- required Remoting DLLs present: `Eplan.EplApi.RemoteClientu.dll`, `Remotingu.dll`.
+- EPLAN Electric P8 Professional 64-bit;
+- 2.9 SP1 Update 4, build 14773;
+- API/API Extension present;
+- API path `C:\Program Files\EPLAN\Platform\2.9.4\Bin`;
+- AddIn/DataModel/HEServices and RemoteClient/Remoting DLLs present;
+- x64 .NET SDK available under `C:\Program Files\dotnet`;
+- AddIn compiles against the real 2.9.4 assemblies;
+- EPLAN loads the AddIn through `%APPDATA%\EPLAN\ShadowCopyAssemblies`;
+- `AudeuAiDispatch` registers as ordinal `20` and executes;
+- real `system.status` spool round-trip PASS;
+- real Task 5 `project.getActive` PASS for project `УСПД Жуковский ПНС`, database ID `25`, 7 pages, read-only `False`;
+- Task 6 production `Audeu.EplanAi.LegacyHost` compiles against the workstation's actual EPLAN 2.9.4 `RemoteClientu.dll` / `Remotingu.dll`;
+- EPLAN registers an x64 Remoting server under `HKCU\Software\EPLAN\RemoteServer\49152`;
+- real RemoteClient discovery returns `EplanCommunicationServer`, PID `6864`, variant `EPLAN Electric P8. Professional`, version `2.9.4.14773`, x64;
+- real persistent RemoteClient sequence `connect/ping -> system.status -> project.getActive -> project.listPages -> selection.get -> object.get` PASS using one `projectSessionId`.
 
-Gate A is split into:
+Gate status:
 
-- **Gate A1 — development environment:** PASS;
-- **Gate A2 — runtime integration:** pending until Tasks 4–6 provide code for add-in loading, action registration and RemoteClient round-trip.
-
-This split is intentional: Tasks 2–3 do not depend on runtime integration code that does not exist yet, while Gate B / M0 still requires Gate A2 to pass.
+- **Gate A1 — development environment:** PASS.
+- **Gate A2 — AddIn runtime:** PASS.
+- **Gate A2 — Task 5 DataModel compatibility:** PASS.
+- **Gate A2 — RemoteClient real assembly compatibility:** PASS.
+- **Gate A2 — RemoteClient runtime discovery/connect/action execution:** PASS.
+- **Gate B / M0:** pending Task 7 named pipe, Task 8 MCP read tools and final Task 9 acceptance.
 
 ## Current status
 
-- [x] Repository created.
-- [x] EPLAN 2.9 API documentation studied at architecture level.
-- [x] EPLAN AI Bridge 0.1 architecture approved.
-- [x] Sequential implementation plan M0 → M1 approved.
-- [x] Repository designated as the source of truth and long-term project memory.
-- [x] Project foundation documentation merged to `main` via PR #1.
-- [x] Gate A1: real EPLAN 2.9 development environment validated.
-- [ ] Gate A2: add-in load / dispatch / RemoteClient runtime integration.
-- [x] Task 1: repository scaffold and CI completed on `m0/task-1-scaffold`; PR #3 open.
-- [x] Task 2: versioned bridge contracts implemented and revalidated with a real xUnit v3 / Microsoft Testing Platform run; PR #5 open.
-- [~] Task 3: secure local spool in progress on `m0/task-3-spool`.
-- [ ] Task 4: load add-in and round-trip `system.status` through `AudeuAiDispatch`.
-- [ ] Gate B / M0: prove read-only bridge on real EPLAN 2.9.
-- [ ] Gate C / M1: prove safe Function Text Preview → Apply → Verify → Undo/Rollback.
+- [x] Task 1: repository scaffold / CI — draft PR #3.
+- [x] Task 2: versioned contracts — Issue #4 completed, draft PR #5.
+- [x] Task 3: secure local spool — Issue #6 completed, draft PR #7.
+- [x] Task 4: AddIn + fixed `AudeuAiDispatch` — Issue #8 completed, draft PR #11.
+- [x] Task 5: project session + read-only EPLAN inspection — Issue #12 completed, draft PR #15.
+- [x] Task 6: LegacyHost RemoteClient gateway — Issue #16 completed, draft PR #17, branch `m0/task-6-remoteclient`.
+- [ ] Task 7: current-user named-pipe LegacyHost.
+- [ ] Task 8: MCP read-only tools.
+- [ ] Task 9 / Gate B: complete read-only bridge acceptance.
+- [ ] M1 / Gate C: Function Text Preview -> Apply -> Verify -> Undo/Rollback.
 
-## Task 1 implementation state
-
-Created on `m0/task-1-scaffold`:
-
-- `EplanAiBridge.sln`;
-- shared MSBuild configuration;
-- central package versions;
-- `netstandard2.0` Contracts shell;
-- `net472` AddIn shell with explicit EPLAN DLL guard;
-- `net472` LegacyHost shell with explicit Remoting DLL guard;
-- `net8.0` MCP shell;
-- four test-project shells;
-- Gate A prerequisite documentation;
-- Windows CI for non-EPLAN builds and negative EPLAN-path guard tests.
-
-### Task 1 CI evidence
-
-GitHub Actions run `39959463954` completed successfully on 2026-10-23.
-
-Verified steps:
-
-- Contracts restore/build — success;
-- MCP restore/build — success;
-- AddIn without `EplanApi29Dir` — expected failure detected with the explicit Gate A message;
-- LegacyHost without `EplanApi29Dir` — expected failure detected with the explicit Gate A message.
-
-An earlier run exposed a CI harness defect: PowerShell retained `$LASTEXITCODE = 1` from the intentionally failing negative build even after the expected message was verified. The workflow was corrected to explicitly return success after a validated expected failure.
-
-### Task 1 ruling
-
-`Audeu.EplanAi.LegacyHost.Tests` targets `net472`, not `net8.0`, because it directly references a `net472` project. Contracts/MCP tests remain `net8.0`; LegacyHost/AddIn integration tests are `net472`.
+All existing PRs remain unmerged. Do not merge without explicit user approval.
 
 ## Test runner ruling
 
-The project uses xUnit v3. xUnit v3 test projects are executable test applications. With the .NET 8 SDK used in CI, `dotnet test` must be routed through Microsoft Testing Platform by setting:
+xUnit v3 test projects are executable test applications. A CI step is only accepted as evidence when it reports a non-zero executed-test count.
 
-```xml
-<OutputType>Exe</OutputType>
-<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+## Task 1 — scaffold
+
+Solution/project shells, shared MSBuild configuration, EPLAN API path guards, MCP/Contracts shells and Windows CI.
+
+Evidence: CI `39959463954` success.
+
+## Task 2 — contracts
+
+Protocol `1.0`, `BridgeRequest` / `BridgeResponse`, session-scoped `ObjectReference`, stable errors and initial Change Plan contracts.
+
+Evidence: CI `39975775380`, Contracts **18/18**.
+
+## Task 3 — secure spool
+
+Fixed root `%LOCALAPPDATA%\Audeu\EplanAiBridge`, GUID file names, request/response size limits, same-directory temp+rename, duplicate fail-closed behavior, response-ID verification and stale cleanup.
+
+Evidence: final CI `39976839719`, Contracts **18/18**, LegacyHost spool **8/8**.
+
+## Task 4 — fixed AddIn dispatch — PASS
+
+Implemented `EplanAddIn : IEplAddIn`, fixed `AudeuAiDispatchAction : IEplAction`, secure `REQUESTID`, `system.status`, diagnostics and UTF-8/BOM handling.
+
+Important real-API findings:
+
+- installed EPLAN 2.9.4 `ActionProperties` has no `Description` member;
+- `OnRegister()` need not repeat for an already registered AddIn;
+- Windows PowerShell 5.1 `-Encoding UTF8` writes BOM, so spool reading is BOM-tolerant.
+
+Final CI `40303614597`: Contracts **18/18**, spool **8/8**, AddIn **13/13**, MCP/guards PASS.
+
+Real EPLAN `system.status` round-trip PASS with `Execute:entered` -> matching request ID -> `Execute:success`.
+
+## Task 5 — read-only EPLAN inspection — PASS
+
+Fixed operation surface:
+
+- `project.getActive`;
+- `project.listPages`;
+- `selection.get`;
+- `object.get` (Function-only).
+
+`ProjectSessionTracker` binds references to one live EPLAN database/session. Stale references fail closed. No arbitrary property IDs or write APIs are exposed.
+
+Final repo CI `40309525419`: Contracts **18/18**, LegacyHost spool **8/8**, AddIn **31/31**, MCP/guards PASS.
+
+Real Task 5 build against installed EPLAN 2.9.4: PASS.
+
+Real `project.getActive`:
+
+```text
+PASS: Task 5 project.getActive succeeded for request 181d5d4a-9818-49e0-843a-327c27a642c4
+projectSessionId : e4caa3c7-e888-47be-ae0c-42b51403df9f
+databaseId       : 25
+name             : УСПД Жуковский ПНС
+fullName         : E:\EPLAN\УСПД Жуковский ПНС
+pageCount        : 7
+isReadOnly       : False
 ```
 
-This ruling exists because Task 3 exposed that the earlier configuration let `dotnet test` exit successfully after printing `No test is available`. A green workflow step without an actual test count is therefore not acceptable evidence for this project.
+## Task 6 — LegacyHost RemoteClient gateway — PASS
 
-Completion evidence for any automated test suite must include a runner summary with an actual non-zero test count.
+Canonical tracking: Issue #16 completed. Draft PR #17 remains open/unmerged. Branch `m0/task-6-remoteclient`, stacked on validated Task 5.
 
-## Task 2 implementation state
+### Design and safety boundary
 
-Branch: `m0/task-2-contracts`  
-Issue: #4  
-Draft stacked PR: #5
+LegacyHost remains engineering-logic-free. `EplanRemoteClientAdapter` is the only class that references `Eplan.EplApi.RemoteClient`. `RemoteGateway` owns connection/session policy and the existing secure spool round-trip.
 
-Implemented EPLAN-independent bridge contracts:
+The only EPLAN action it can construct is:
 
-- `ProtocolConstants.Version = "1.0"` and explicit supported-version detection;
-- `BridgeRequest` with current protocol and empty arguments defaults;
-- `BridgeResponse` with current protocol and empty warnings defaults;
-- session-scoped `ObjectReference` with `uint` database/type identifiers and `long` object identifier;
-- stable error-code constants introduced only where covered by current tests;
-- `ChangeOperation`;
-- immutable-identity `ChangePlan` with defensive operation-list copy;
-- plan states `previewed`, `applied`, `failed`;
-- allowed transitions only `previewed -> applied|failed`.
+```text
+AudeuAiDispatch /REQUESTID:<canonical-guid>
+```
 
-### Task 2 original TDD sequence
+No caller can provide an EPLAN action name, host, port or filesystem path.
 
-Protocol cycle:
+Implemented behavior:
 
-- RED commit `55ee47135c018e4050e908fe070ce1ee9cd16895`, CI run `39972910562`: production Contracts built and the test project did not compile before the protocol types existed.
-- implementation commit `aa4a6f80eb802e72196398fa5afbc079ba0d863b` added the minimum protocol types.
+- discover active local EPLAN servers;
+- accept only x64 Electric P8-family candidates with version `2.9*`;
+- deterministic selection by server port, then process ID;
+- `Connect`, force `SynchronousMode = true`, require successful `Ping()`;
+- fixed-action spool round-trip;
+- stable `EPLAN_NOT_FOUND`, `EPLAN_NOT_CONNECTED`, `EPLAN_ACTION_FAILED`, `OPERATION_TIMEOUT` errors;
+- timeout poisons/disconnects the current gateway connection;
+- persistent connection preserves one live `projectSessionId` across Task 5 reads.
 
-Change Plan cycle:
+### Task 6 TDD / CI evidence
 
-- RED commit `83667208c927c77f51268250145c4c615f02dd01`, CI run `39973445201`: production Contracts built and the test project did not compile before ObjectReference / Change Plan contracts existed.
-- implementation commit `7644502a66d828be20fec8a14cdabe33501eb10b` added the minimum Change Plan contracts.
+Remote contracts:
 
-The original post-implementation workflow runs were initially described as test-green, but later log inspection during Task 3 showed that VSTest had reported `No test is available`. Those runs prove compilation only and are not retained as test-execution evidence.
+- RED `05d3de33c83d30027ad84432a311c48625855a18`, CI `40312106175`;
+- GREEN CI `40312656987`.
 
-### Task 2 corrected verification evidence
+Gateway policy:
 
-- test-runner correction: `OutputType=Exe` plus `TestingPlatformDotnetTestSupport=true`;
-- verified CI run: `39975426789` on commit `6ec8863d4fce537986d8a4d265cd3c94667809ed`;
-- actual runner summary: **Failed: 0, Passed: 18, Skipped: 0, Total: 18**;
-- MCP build passed in the same run;
-- AddIn and LegacyHost negative EPLAN API guards passed in the same run.
+- RED `117b991d6c05e6d0b446a50c4f78fdf5aa899fac`, CI `40313041462`;
+- implementation `dd07bd6c897afd7c5dc766acdad6786ef13686ce`.
 
-Task 2 is considered verified only because the corrected runner executed all 18 tests.
+Real EPLAN adapter:
 
-No EPLAN assembly or serializer dependency was added to `Audeu.EplanAi.Contracts`.
+- RED `2303cb09042be9771451fbfeceb86f810b5bf2f2`, CI `40313685998`;
+- implementation `ae4350498833c7467d5d09652584404883dd6021`;
+- production LegacyHost compiles against installed EPLAN 2.9.4 assemblies;
+- managed Remoting DLL deployment regression fixed by Copy Local (`Private=true`), with GREEN CI `40321193863`;
+- discovery diagnostics proved real x64 server visibility;
+- real workstation variant `EPLAN Electric P8. Professional` exposed an overly strict exact-match filter;
+- RED `d9f48a4a3ac1d2d7e0c73f40428fd5cafb376819`, CI `40327338550`: **22/23**, only the real-variant regression test failed;
+- fix `bf01878b4303fd55d4e5c641227509be88666975` accepts Electric P8-family variant strings while retaining x64 and `2.9*` requirements;
+- GREEN CI `40327610664`: Contracts **18/18**, LegacyHost **23/23**, AddIn **31/31**, MCP build and prerequisite guards PASS.
 
-## Task 3 implementation state
+### Task 6 real-workstation runtime acceptance — PASS
 
-Branch: `m0/task-3-spool`  
-Issue: #6
+Observed:
 
-Task 3 will provide the GUID-addressed local request/response spool under `%LOCALAPPDATA%\Audeu\EplanAiBridge` with size limits, atomic request writes and stale-file cleanup.
+```text
+LegacyHost process architecture: x64
+RemoteClient raw active-server discovery count: 1
+name=EplanCommunicationServer; port=49152; pid=6864;
+variant=EPLAN Electric P8. Professional; version=2.9.4.14773; x64=True
+PASS: RemoteClient connected and pinged an active local EPLAN 2.9 server.
+PASS: RemoteClient SynchronousMode = True
+PASS: system.status via RemoteClient
+PASS: project.getActive via persistent RemoteClient session
+projectSessionId : 21b58d12-1213-4876-aff1-fb62a4dcad5d
+PASS: project.listPages used the same projectSessionId
+PASS: selection.get used the same projectSessionId
+PASS: object.get resolved the selected Function in the same project session
+PASS: Task 6 persistent RemoteClient read sequence completed.
+PASS: Task 6 RemoteClient probe completed successfully.
+```
 
-A test-only MSBuild property `SkipEplanApiValidation=true` is allowed only when the LegacyHost unit-test project references LegacyHost. Direct/runtime LegacyHost builds still require `EplanApi29Dir`, and CI must continue verifying that guard.
-
-The first attempted Task 3 RED run `39974710973` exposed the xUnit v3 runner configuration defect before executing the spool tests. It is not valid behavioral RED evidence and must not be used as such. A new RED run is required after the test-runner fix is propagated into the Task 3 branch.
+Project: `УСПД Жуковский ПНС`, database ID `25`, 7 pages. Selected Function reference was resolved in the same session. This completes Gate A2 RemoteClient runtime validation.
 
 ## Immediate next actions
 
-1. Propagate the xUnit v3 Microsoft Testing Platform configuration into Task 3 tests.
-2. Re-run Task 3 RED and verify the failure is specifically due to missing `BridgePaths` / `SpoolStore` implementation.
-3. Implement only the minimum secure spool behavior required by those tests.
-4. Obtain a GREEN run with a non-zero executed-test count and with the ordinary LegacyHost EPLAN guard still passing.
-5. Keep Gate A2 explicit and execute it when Tasks 4–6 make it possible.
-6. Do not mark Gate B / M0 complete until add-in load, dispatch and RemoteClient round-trip pass on the verified workstation.
+1. Do not merge PR #3, #5, #7, #11, #15 or #17 without explicit user approval.
+2. Start Task 7 on a new stacked branch from the completed Task 6 head.
+3. Implement current-user Named Pipe `Audeu.EplanAi.LegacyHost.v1` between MCP and LegacyHost with strict framing/size/timeouts and no caller-controlled pipe/path names.
+4. Keep LegacyHost as the only process that knows EPLAN Remoting.
+5. After Task 7, implement Task 8 MCP read-only tools and then Task 9 / Gate B acceptance.
+6. Do not start M1 write work until Gate B / M0 passes.
 
 ## Release 0.1 boundaries
 
 Included:
-- connection/status;
+- status/connection;
 - active project;
 - page list;
 - current selection;
-- selected Function inspection;
-- preview of one Function Text change;
-- explicit apply;
-- read-back verification;
-- rollback/undo behavior.
+- Function inspection;
+- one Function Text Preview -> Apply -> Verify -> Undo/Rollback flow.
 
 Deferred:
 - automatic schematic generation;
@@ -204,16 +253,15 @@ Deferred:
 - page creation/deletion;
 - device/article selection;
 - engineering rules engine;
-- equipment selection;
 - arbitrary EPLAN property/action access.
 
 ## Working rules
 
-1. Keep architecture, plans, decisions, code and test evidence in this repository.
-2. Update this file after every milestone or material blocker.
-3. Prefer small branches/PRs with independently verifiable outcomes.
+1. GitHub is project memory/source of truth.
+2. Update this file after material implementation/evidence/blockers.
+3. Prefer small stacked branches/PRs.
 4. Never test mutating operations on a production EPLAN project.
-5. Do not start M1 write work until M0 passes on real EPLAN 2.9.
-6. No arbitrary code, property ID, EPLAN action name, or filesystem path may be model-controlled.
-7. Durable EPLAN object identity is never inferred from session-scoped `DatabaseIdentifier`/`ObjectIdentifier` values.
-8. A CI step is not proof that tests ran unless the runner reports a non-zero executed-test count.
+5. No arbitrary code, property ID, EPLAN action name or filesystem path may be model-controlled.
+6. Durable object identity is never inferred from session-scoped EPLAN IDs.
+7. Require non-zero executed test counts for CI evidence.
+8. Do not merge project PRs without explicit user approval.
