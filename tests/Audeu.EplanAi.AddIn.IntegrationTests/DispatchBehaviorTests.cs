@@ -85,6 +85,24 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
         }
 
         [Fact]
+        public void Execute_PowerShell51Utf8BomStatusRequest_RoundTripsThroughSpool()
+        {
+            var requestId = Guid.NewGuid();
+            var directory = Path.Combine(_root, "requests");
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, requestId.ToString("D") + ".request.json");
+            var json = "{\"ProtocolVersion\":\"1.0\",\"RequestId\":\"" + requestId.ToString("D") + "\",\"Operation\":\"system.status\",\"Mode\":\"read\",\"ProjectSessionId\":null,\"Arguments\":{}}";
+            File.WriteAllText(path, json, new UTF8Encoding(true));
+
+            Assert.True(CreateAction().Execute(ContextFor(requestId)));
+
+            var response = ReadResponse(requestId);
+            Assert.True(response.Success);
+            Assert.Equal(requestId, response.RequestId);
+            Assert.Contains("\"status\":\"ready\"", response.DataJson);
+        }
+
+        [Fact]
         public void Execute_ValidRequestIdWhenProcessingThrows_WritesDiagnosticResponse()
         {
             var requestId = Guid.NewGuid();
