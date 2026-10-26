@@ -10,17 +10,21 @@
     <ProjectReference Include="..\Audeu.EplanAi.Contracts\Audeu.EplanAi.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(UseEplanApiStubs)' != 'true'">
     <EplanRequiredAssembly Include="$(EplanApi29Dir)\Eplan.EplApi.AFu.dll" />
     <EplanRequiredAssembly Include="$(EplanApi29Dir)\Eplan.EplApi.Baseu.dll" />
     <EplanRequiredAssembly Include="$(EplanApi29Dir)\Eplan.EplApi.DataModelu.dll" />
     <EplanRequiredAssembly Include="$(EplanApi29Dir)\Eplan.EplApi.HEServicesu.dll" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(EplanApi29Dir)' != ''">
+  <ItemGroup Condition="'$(EplanApi29Dir)' != '' And '$(UseEplanApiStubs)' != 'true'">
     <Reference Include="Eplan.EplApi.AFu" HintPath="$(EplanApi29Dir)\Eplan.EplApi.AFu.dll" Private="false" />
     <Reference Include="Eplan.EplApi.Baseu" HintPath="$(EplanApi29Dir)\Eplan.EplApi.Baseu.dll" Private="false" />
     <Reference Include="Eplan.EplApi.DataModelu" HintPath="$(EplanApi29Dir)\Eplan.EplApi.DataModelu.dll" Private="false" />
     <Reference Include="Eplan.EplApi.HEServicesu" HintPath="$(EplanApi29Dir)\Eplan.EplApi.HEServicesu.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseEplanApiStubs)' == 'true'">
+    <Compile Include="..\..\test-support\EplanApiStubs.cs" Link="TestOnly\EplanApiStubs.cs" />
   </ItemGroup>
 </Project>
