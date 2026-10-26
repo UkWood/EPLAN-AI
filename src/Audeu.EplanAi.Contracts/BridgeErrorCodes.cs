@@ -6,5 +6,6 @@ namespace Audeu.EplanAi.Contracts
         public const string SessionStale = "SESSION_STALE";
         public const string PlanAlreadyApplied = "PLAN_ALREADY_APPLIED";
         public const string BridgeUnknownOperation = "BRIDGE_UNKNOWN_OPERATION";
+        public const string InternalError = "INTERNAL_ERROR";
     }
 }
