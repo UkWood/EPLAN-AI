@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.Serialization.Json;
+using System.Text;
 using Audeu.EplanAi.AddIn.Actions;
 using Audeu.EplanAi.AddIn.Dispatch;
 using Audeu.EplanAi.AddIn.Serialization;
@@ -63,6 +64,24 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
             Assert.Null(response.ErrorCode);
             Assert.Contains("\"status\":\"ready\"", response.DataJson);
             Assert.Contains("\"protocolVersion\":\"1.0\"", response.DataJson);
+        }
+
+        [Fact]
+        public void Execute_PowerShellStatusRequestShape_RoundTripsThroughSpool()
+        {
+            var requestId = Guid.NewGuid();
+            var directory = Path.Combine(_root, "requests");
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, requestId.ToString("D") + ".request.json");
+            var json = "{\"ProtocolVersion\":\"1.0\",\"RequestId\":\"" + requestId.ToString("D") + "\",\"Operation\":\"system.status\",\"Mode\":\"read\",\"ProjectSessionId\":null,\"Arguments\":{}}";
+            File.WriteAllText(path, json, new UTF8Encoding(false));
+
+            Assert.True(CreateAction().Execute(ContextFor(requestId)));
+
+            var response = ReadResponse(requestId);
+            Assert.True(response.Success);
+            Assert.Equal(requestId, response.RequestId);
+            Assert.Contains("\"status\":\"ready\"", response.DataJson);
         }
 
         [Fact]
