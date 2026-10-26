@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Audeu.EplanAi.LegacyHost.Pipe
 {
-    public sealed class LegacyHostPipeServer : IDisposable
+    public sealed class LegacyHostPipeServer : ILegacyHostPipeServer
     {
         private readonly IBridgeRequestExecutor _executor;
         private readonly SemaphoreSlim _executionGate = new SemaphoreSlim(1, 1);
