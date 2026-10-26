@@ -2,13 +2,18 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Audeu.EplanAi.Contracts;
+using Audeu.EplanAi.LegacyHost.Configuration;
 using Audeu.EplanAi.LegacyHost.Pipe;
 using Audeu.EplanAi.LegacyHost.Remote;
+using Audeu.EplanAi.LegacyHost.Spool;
 
 namespace Audeu.EplanAi.LegacyHost.Hosting
 {
     public sealed class PersistentLegacyHost : IDisposable
     {
+        private static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan DefaultOperationTimeout = TimeSpan.FromSeconds(60);
+
         private readonly IRemoteGatewayLifecycle _gateway;
         private readonly ILegacyHostPipeServer _server;
         private readonly IDisposable _ownedResource;
@@ -32,6 +37,17 @@ namespace Audeu.EplanAi.LegacyHost.Hosting
             }
 
             _connectTimeout = connectTimeout;
+        }
+
+        public static PersistentLegacyHost CreateDefault()
+        {
+            var adapter = new EplanRemoteClientAdapter();
+            var gateway = new RemoteGateway(
+                adapter,
+                new SpoolStore(BridgePaths.CreateDefault()));
+            var executor = new RemoteGatewayBridgeExecutor(gateway, DefaultOperationTimeout);
+            var server = new LegacyHostPipeServer(executor);
+            return new PersistentLegacyHost(gateway, server, adapter, DefaultConnectTimeout);
         }
 
         public async Task<BridgeResponse> RunAsync(CancellationToken cancellationToken)
