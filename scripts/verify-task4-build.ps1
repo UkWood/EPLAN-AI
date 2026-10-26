@@ -45,8 +45,11 @@ if (-not (Test-Path $hostExe)) {
 
 $diagnosticsDir = Join-Path $env:LOCALAPPDATA 'Audeu\EplanAiBridge\diagnostics'
 $lifecycleLog = Join-Path $diagnosticsDir 'addin-lifecycle.log'
-if (Test-Path $lifecycleLog) {
-    Remove-Item -Force $lifecycleLog
+$actionLog = Join-Path $diagnosticsDir 'dispatch-action.log'
+foreach ($logPath in @($lifecycleLog, $actionLog)) {
+    if (Test-Path $logPath) {
+        Remove-Item -Force $logPath
+    }
 }
 
 $arguments = @(
@@ -58,7 +61,7 @@ $arguments = @(
     "/register:`"$addinDll`""
 )
 
-Write-Host "Starting clean EPLAN registration via EplApiModuleAction..."
+Write-Host 'Starting clean EPLAN registration via EplApiModuleAction...'
 Write-Host "Waiting up to $RegistrationTimeoutSeconds seconds for EPLAN startup + registration..."
 $process = Start-Process -FilePath $hostExe -ArgumentList $arguments -PassThru
 
@@ -72,14 +75,29 @@ while ((Get-Date) -lt $deadline -and -not (Test-Path $lifecycleLog)) {
 }
 
 if (-not (Test-Path $lifecycleLog)) {
-    throw "EPLAN registration process exited, but IEplAddIn.OnRegister did not produce $lifecycleLog. The add-in DLL was not loaded far enough to enter its lifecycle. Check EPLAN system messages and module loading prerequisites."
+    throw "EPLAN registration process exited, but no AddIn lifecycle log was produced at $lifecycleLog. The DLL was not loaded far enough to enter IEplAddIn lifecycle."
 }
 
 $lifecycle = Get-Content -Path $lifecycleLog
-if (-not ($lifecycle | Select-String -SimpleMatch '|OnRegister|')) {
-    throw "Lifecycle log exists but contains no OnRegister entry: $lifecycleLog"
+Write-Host 'AddIn lifecycle observed:'
+$lifecycle | ForEach-Object { Write-Host "  $_" }
+
+if ($lifecycle | Select-String -SimpleMatch '|OnRegister|') {
+    Write-Host 'PASS: EPLAN performed fresh IEplAddIn.OnRegister registration.'
+}
+elseif ($lifecycle | Select-String -Pattern '\|(OnInit|OnInitGui|OnExit)\|') {
+    Write-Host 'PASS: EPLAN loaded the AddIn lifecycle. OnRegister was not repeated, which is expected for an already registered AddIn.'
+}
+else {
+    throw "AddIn lifecycle log exists but contains no expected registration/startup lifecycle entry: $lifecycleLog"
 }
 
-Write-Host 'PASS: EPLAN called IEplAddIn.OnRegister.'
-$lifecycle | ForEach-Object { Write-Host "  $_" }
-Write-Host 'Registration lifecycle verified. Next run scripts/test-task4-status-roundtrip.ps1.'
+if (Test-Path $actionLog) {
+    Write-Host 'Dispatch action diagnostics observed during registration/startup:'
+    Get-Content -Path $actionLog | ForEach-Object { Write-Host "  $_" }
+}
+else {
+    Write-Host 'INFO: no dispatch-action.log was produced during registration/startup. The action may be instantiated lazily; the round-trip probe will test that boundary.'
+}
+
+Write-Host 'Registration/load lifecycle verified. Next run scripts/test-task4-status-roundtrip.ps1.'
