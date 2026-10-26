@@ -54,21 +54,22 @@ Confirmed on 2026-10-23 and extended with real build/runtime evidence on 2026-10
 - required AddIn/API DLLs present;
 - required Remoting DLLs present;
 - .NET SDK x64 available under `C:\Program Files\dotnet` (SDK 8.0.427 confirmed);
-- Task 4 AddIn compiles against the real EPLAN 2.9.4 API assemblies;
+- Task 5 AddIn compiles against the real EPLAN 2.9.4 API assemblies;
 - EPLAN loads the AddIn through `%APPDATA%\EPLAN\ShadowCopyAssemblies`;
 - real lifecycle observed: `OnInit -> OnInitGui -> OnExit`;
 - real `AudeuAiDispatchAction` construction and `IEplAction.OnRegister()` observed;
 - action registered as `AudeuAiDispatch`, ordinal `20`;
-- real `system.status` request/response spool round-trip PASS on 2026-10-26.
+- real `system.status` request/response spool round-trip PASS;
+- real `project.getActive` request/response spool round-trip PASS: session `e4caa3c7-e888-47be-ae0c-42b51403df9f`, database ID `25`, project `УСПД Жуковский ПНС`, page count `7`, read-only `False`.
 
 Gate A status:
 
 - **Gate A1 — development environment:** PASS.
-- **Gate A2 — AddIn runtime portion:** PASS for Task 4 build, module load, action registration, action execution, request read, dispatch and response write.
-- **Gate A2 — Task 5 DataModel compatibility:** pending real workstation build against EPLAN 2.9.4 assemblies.
+- **Gate A2 — AddIn runtime portion:** PASS for build, module load, action registration, action execution, request read, dispatch and response write.
+- **Gate A2 — Task 5 DataModel compatibility:** PASS on real EPLAN 2.9.4.
 - **Gate A2 — RemoteClient portion:** pending Task 6.
 
-Gate B / M0 still requires Task 5 real-workstation validation and the LegacyHost/RemoteClient path.
+Gate B / M0 still requires LegacyHost/RemoteClient, named pipe, MCP read tools and final read-only acceptance.
 
 ## Current status
 
@@ -80,9 +81,11 @@ Gate B / M0 still requires Task 5 real-workstation validation and the LegacyHost
 - [x] Task 2: versioned bridge contracts — branch `m0/task-2-contracts`, issue #4 closed, draft PR #5.
 - [x] Task 3: secure local spool — branch `m0/task-3-spool`, issue #6 closed, draft PR #7.
 - [x] Task 4: minimal AddIn + fixed `AudeuAiDispatch` — branch `m0/task-4-dispatch`, Issue #8 completed, draft PR #11.
-- [~] Task 5: project session + read-only EPLAN operations — repo-side implementation and CI PASS; real EPLAN build + `project.getActive` smoke pending. Branch `m0/task-5-readonly-inspection`, Issue #12, draft PR #15.
+- [x] Task 5: project session + read-only EPLAN operations — real EPLAN build and `project.getActive` acceptance PASS. Branch `m0/task-5-readonly-inspection`, Issue #12 completed, draft PR #15.
 - [ ] Task 6: LegacyHost RemoteClient gateway.
-- [ ] Gate B / M0: prove complete read-only bridge on real EPLAN 2.9.
+- [ ] Task 7: current-user named-pipe LegacyHost.
+- [ ] Task 8: MCP read-only tools.
+- [ ] Task 9 / Gate B: prove complete read-only bridge on real EPLAN 2.9.
 - [ ] Gate C / M1: prove safe Function Text Preview -> Apply -> Verify -> Undo/Rollback.
 
 ## Test runner ruling
@@ -105,147 +108,68 @@ Evidence: CI `39975775380` success; Contracts **18/18**.
 
 Implemented fixed root `%LOCALAPPDATA%\Audeu\EplanAiBridge`, GUID request/response names, request/response size limits, temp + same-directory rename, duplicate fail-closed behavior, response ID verification and stale cleanup.
 
-Evidence:
-
-- RED `39975854174`;
-- implementation commit `08e386f9e690dc8dece51c96a20b659dd49c0512`;
-- synchronized branch CI `39976839719` success;
-- PR CI `39976847095` success;
-- Contracts **18/18**;
-- LegacyHost spool **8/8**.
+Evidence: Contracts **18/18**, LegacyHost spool **8/8**, final Task 3 CI `39976839719` success.
 
 ## Task 4 — minimal AddIn and fixed dispatch action
 
 Canonical tracking: Issue #8. Branch `m0/task-4-dispatch`. Draft stacked PR #11 remains unmerged.
 
-Implemented:
+Implemented fixed `AudeuAiDispatch`, secure request-ID dispatch, whitelisted `system.status`, diagnostic lifecycle/action logging and BOM-tolerant request reading.
 
-- exactly one `EplanAddIn : IEplAddIn`;
-- exactly one bridge `AudeuAiDispatchAction : IEplAction`;
-- fixed action `AudeuAiDispatch`, ordinal `20`;
-- only canonical GUID `REQUESTID` accepted;
-- fixed local spool paths only;
-- explicit operation whitelist;
-- first operation `system.status`;
-- stable protocol mismatch/unknown operation errors;
-- valid request processing exceptions surface as `INTERNAL_ERROR` responses;
-- diagnostic lifecycle/action logs for real-workstation validation;
-- UTF-8 BOM-tolerant request reader to handle Windows PowerShell 5.1 generated requests;
-- validation harness writes UTF-8 without BOM and reads responses explicitly as UTF-8.
+Final repo evidence: CI `40303614597`: Contracts **18/18**, LegacyHost spool **8/8**, AddIn **13/13**, MCP build and prerequisite guards success.
 
-### Task 4 important real-API findings
-
-1. Real EPLAN 2.9.4 `ActionProperties` does not expose `Description`, despite an EPLAN documentation example using it. CI stub was corrected; `GetActionProperties(ref ActionProperties)` is a no-op.
-2. `IEplAddIn.OnRegister()` is not expected to repeat for an already registered module. Real load proof is `OnInit/OnInitGui/OnExit` plus ShadowCopy location.
-3. Windows PowerShell 5.1 `Set-Content -Encoding UTF8` adds a BOM. Direct `DataContractJsonSerializer.ReadObject()` on the raw stream rejected it. Regression coverage now proves BOM-prefixed requests are accepted.
-
-### Task 4 final evidence
-
-- UTF-8 BOM GREEN CI `40303614597`: Contracts **18/18**, LegacyHost spool **8/8**, AddIn **13/13**, MCP build and prerequisite guards success.
-- Final real request: `ea766505-2090-4c57-b931-4063bb03ae28`.
-- Real EPLAN output: `PASS: AudeuAiDispatch system.status round-trip succeeded`.
-- Diagnostics: `Execute:entered`, matching request ID, `Execute:success`.
-
-Task 4 is complete; Issue #8 is closed. PR #11 remains draft/unmerged.
+Real EPLAN acceptance: `system.status` round-trip PASS with `Execute:entered`, matching request ID and `Execute:success`.
 
 ## Task 5 — project session and read-only EPLAN inspection
 
 Canonical tracking: Issue #12. Branch `m0/task-5-readonly-inspection`. Draft stacked PR #15 targets Task 4 and remains unmerged.
 
-### Task 5 fixed operation surface
-
-The AddIn operation registry now exposes only these Task 5 reads in addition to `system.status`:
+Implemented fixed read operations:
 
 - `project.getActive`;
 - `project.listPages`;
 - `selection.get`;
-- `object.get`.
+- `object.get` (Function-only in Task 5).
 
-No write operation, arbitrary EPLAN action name, arbitrary property ID, lock, transaction, SafetyPoint or Undo path was introduced.
+Session/reference policy fails closed on project/session changes and never exposes arbitrary EPLAN property IDs or whole DataModel objects.
 
-### Task 5 architecture
+Repo-side evidence:
 
-- `ProjectSessionTracker` owns ephemeral `DatabaseIdentifier -> Guid` project session identity.
-- `IEplanReadAdapter` separates EPLAN API calls from deterministic service semantics.
-- `EplanReadAdapter` is the only Task 5 DataModel/HEServices adapter.
-- `ReadOperationService` validates sessions/references and projects compact response JSON.
-- `CompactJson` serializes internal lower-camel result DTOs.
-- one long-lived `ReadOperationService` is held by `OperationRegistry` for the lifetime of the AddIn runtime.
+- session tracker RED `40306260040`, GREEN `40306678839` (AddIn **17/17**);
+- read-service RED `40307026719`, GREEN `40308065557` (AddIn **27/27**);
+- real-adapter RED `40308440298`;
+- final repo GREEN `40309525419`: Contracts **18/18**, LegacyHost spool **8/8**, AddIn **31/31**, MCP build and prerequisite guards success.
 
-### Task 5 session/reference policy
+### Task 5 real-workstation acceptance — PASS
 
-- same active `DatabaseIdentifier` in one runtime -> same session GUID;
-- database identifier change -> new session GUID and old session becomes stale;
-- no active project -> `NO_ACTIVE_PROJECT` and tracker clears;
-- missing/mismatched project session -> `SESSION_STALE`;
-- object reference database mismatch -> `SESSION_STALE`;
-- malformed object reference arguments -> `VALIDATION_FAILED`;
-- unresolved identifier -> `OBJECT_NOT_FOUND`;
-- resolved identity mismatch/invalid object -> `OBJECT_INVALID`;
-- non-Function `object.get` -> `OBJECT_TYPE_NOT_ALLOWED`;
-- `StringIdentifier` remains runtime-only and is never treated as durable identity.
+Real production build against `C:\Program Files\EPLAN\Platform\2.9.4\Bin`:
 
-### Task 5 EPLAN adapter reads
-
-`EplanReadAdapter` uses only read APIs:
-
-- `SelectionSet.GetCurrentProject(false)`;
-- active `Project` identity/name/path/read-only state;
-- `Project.Pages`;
-- `SelectionSet.Selection`;
-- `StorableObject` database/type/object/string identifiers and validity/type name;
-- `StorableObject.FromStringIdentifier()` for runtime-scoped resolution;
-- Function whitelist: name, page, `FUNC_TEXT`, `FUNC_IDENTDEVICETAG`.
-
-### Task 5 TDD / CI evidence
-
-Session tracker:
-
-- RED commit `b86b2b3bdd45609316fdcde842e8790ffa143c36`, CI `40306260040`: AddIn compile failed because tracker/constants were absent after Contracts **18/18** and spool **8/8**;
-- GREEN CI `40306678839`: AddIn **17/17**, full workflow success.
-
-Read-service semantics:
-
-- RED commit `f6cd872cbd4e84961ea1f260878d93913fbdb810`, CI `40307026719`: compile failed because service/snapshots/adapter boundary were absent;
-- first implementation CI exposed one test-only JSON escaping assumption (`/` represented as `\/`);
-- diagnostic CI `40307755587` identified the exact assertion;
-- corrected test commit `03311b8941aa8e7c58f35b0b8b6ed20d6e663db4`;
-- GREEN CI `40308065557`: AddIn **27/27**, full workflow success.
-
-Real adapter / registry:
-
-- RED commit `dfa011296489bb4b11c6936965990bf802c74c38`, CI `40308440298`: Contracts **18/18**, spool **8/8**, then AddIn compile failed only because `EplanReadAdapter` was absent;
-- production adapter commit `413b0bd104f3c6f3103993537e4b9c7e53aeff7b`;
-- operation registry commit `efac5e89f5085ce321baa71755ee90a3407582f2`;
-- GREEN push CI `40308748325`: Contracts **18/18**, LegacyHost spool **8/8**, AddIn **31/31**, MCP build success, AddIn and LegacyHost prerequisite guards success.
-
-### Task 5 real-workstation validation — pending
-
-Two scripts are provided:
-
-```powershell
-.\scripts\verify-task5-build.ps1
-.\scripts\test-task5-active-project.ps1
+```text
+PASS: Task 5 AddIn compiled against real EPLAN 2.9.4 assemblies
 ```
 
-The build probe must compile the current production AddIn against the actual workstation EPLAN 2.9.4 assemblies. This may expose an exact API signature mismatch; if so, treat the real installed assembly as authoritative and fix via regression TDD before proceeding.
+Real `project.getActive` round-trip:
 
-The runtime smoke probe writes a UTF-8-no-BOM `project.getActive` request and launches EPLAN with `/UseLastOpenedProjects:1`. Expected success includes a non-empty `projectSessionId`, non-zero `databaseIdentifier`, project name/path, page count and read-only state.
+```text
+PASS: Task 5 project.getActive succeeded for request 181d5d4a-9818-49e0-843a-327c27a642c4
+projectSessionId : e4caa3c7-e888-47be-ae0c-42b51403df9f
+databaseId       : 25
+name             : УСПД Жуковский ПНС
+fullName         : E:\EPLAN\УСПД Жуковский ПНС
+pageCount        : 7
+isReadOnly       : False
+```
 
-`project.listPages`, `selection.get` and `object.get` are intentionally **not** chained across separate `/Auto` CLI invocations: each clean command-line invocation starts a new AddIn runtime, while `projectSessionId` is intentionally runtime-scoped. Reusing an old session in a new process should fail with `SESSION_STALE`. Full persistent-runtime validation of these operations belongs to Task 6 through `LegacyHost` / `EplanRemoteClient`.
-
-Task 5 remains open until the real build and `project.getActive` smoke probe pass.
+This proves the real EPLAN path for the first DataModel read. Persistent-session validation of `project.listPages`, `selection.get` and `object.get` moves to Task 6, where RemoteClient keeps one EPLAN runtime alive.
 
 ## Immediate next actions
 
 1. Do not merge PR #3, #5, #7, #11 or #15 without explicit user approval.
-2. On the verified EPLAN workstation, switch/pull `m0/task-5-readonly-inspection`.
-3. Run `scripts\verify-task5-build.ps1` and preserve the full output.
-4. If the build passes, ensure a safe test project has been opened once and EPLAN is closed normally.
-5. Run `scripts\test-task5-active-project.ps1`; if the License Manager appears, confirm the existing license selection as in Task 4.
-6. If both probes pass, record evidence, close Issue #12 and then start Task 6.
-7. If the real build fails on an API member/signature, stop and fix that exact mismatch before Task 6.
-8. Do not start M1 write work until Gate B / M0 passes on real EPLAN 2.9.
+2. Start Task 6 from the validated Task 5 head: LegacyHost RemoteClient gateway.
+3. Task 6 must discover running EPLAN servers, connect/disconnect, ping, force synchronous action execution, execute only `AudeuAiDispatch /REQUESTID:<guid>`, and map timeout to `OPERATION_TIMEOUT`.
+4. Use the persistent EPLAN connection to validate `project.getActive -> project.listPages -> selection.get -> object.get` in one runtime.
+5. Task 7 will then expose LegacyHost through the current-user-only named pipe.
+6. Do not start M1 write work until Gate B / M0 passes on real EPLAN 2.9.
 
 ## Release 0.1 boundaries
 
