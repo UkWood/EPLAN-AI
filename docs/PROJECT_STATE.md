@@ -6,9 +6,9 @@
 **Current release target:** `0.1`  
 **Updated:** 2026-10-26
 
-## Purpose of this file
+## Purpose
 
-This is the living restart point for the project. Update it whenever a meaningful implementation step, architectural decision, blocker, test result, or milestone changes. A future worker should be able to read this file plus the linked design/plan and continue without relying on chat history.
+This is the living restart point for the project. Update it after every meaningful implementation step, architectural decision, blocker, test result, or milestone change.
 
 ## Approved architecture
 
@@ -18,7 +18,7 @@ ChatGPT / MCP client
         v
 Audeu.EplanAi.Mcp            (.NET 8)
         |
-        | Named Pipe
+        | current-user Named Pipe
         v
 Audeu.EplanAi.LegacyHost     (.NET Framework 4.7.2)
         |
@@ -30,7 +30,7 @@ Audeu.EplanAi.AddIn          (.NET Framework 4.7.2)
 EPLAN 2.9 DataModel / HEServices
 ```
 
-Key rule: the LLM does not receive unrestricted EPLAN API access. It works through a small, versioned bridge/domain API with validation and explicit Change Plans.
+Key rule: the LLM never receives unrestricted EPLAN API access. It works through a small versioned bridge/domain API with explicit validation and Change Plans.
 
 ## Approved documents
 
@@ -44,237 +44,175 @@ Key rule: the LLM does not receive unrestricted EPLAN API access. It works throu
 
 Confirmed on 2026-10-23 and extended with real build/runtime evidence on 2026-10-26:
 
-- EPLAN Electric P8 Professional (64-bit);
-- version 2.9 SP1 Update 4;
-- build 14773;
+- EPLAN Electric P8 Professional 64-bit;
+- version 2.9 SP1 Update 4, build 14773;
 - EPLAN API / API Extension available;
-- `EplanApi29Dir = C:\Program Files\EPLAN\Platform\2.9.4\Bin`;
-- required add-in DLLs present: `Eplan.EplApi.AFu.dll`, `Baseu.dll`, `DataModelu.dll`, `HEServicesu.dll`;
-- required Remoting DLLs present: `Eplan.EplApi.RemoteClientu.dll`, `Remotingu.dll`;
+- API path `C:\Program Files\EPLAN\Platform\2.9.4\Bin`;
+- required AddIn/API DLLs present;
+- required Remoting DLLs present;
 - .NET SDK x64 available under `C:\Program Files\dotnet` (SDK 8.0.427 confirmed);
-- `Audeu.EplanAi.AddIn` compiles successfully against the real EPLAN 2.9.4 API assemblies;
-- direct command-line `AudeuAiDispatch /REQUESTID:<guid>` currently produces EPLAN system error `S336001` and no spool response, proving the remaining blocker is runtime registration/loading rather than build compatibility or request JSON parsing.
+- AddIn compiles against the real EPLAN 2.9.4 API assemblies;
+- EPLAN loads the AddIn through `%APPDATA%\EPLAN\ShadowCopyAssemblies`;
+- real lifecycle observed: `OnInit -> OnInitGui -> OnExit`;
+- real `AudeuAiDispatchAction` construction and `IEplAction.OnRegister()` observed;
+- action registered as `AudeuAiDispatch`, ordinal `20`;
+- real `system.status` request/response spool round-trip PASS on 2026-10-26.
 
-Gate A is split into:
+Gate A status:
 
-- **Gate A1 — development environment:** PASS;
-- **Gate A2 — runtime integration:** PARTIAL. Real AddIn build is PASS; runtime registration/load/action discovery is the active blocker. RemoteClient remains Task 6.
+- **Gate A1 — development environment:** PASS.
+- **Gate A2 — AddIn runtime portion:** PASS for build, module load, action registration, action execution, request read, dispatch and response write.
+- **Gate A2 — RemoteClient portion:** pending Task 6.
 
-Gate B / M0 still requires all relevant Gate A2 checks to pass.
+Gate B / M0 still requires the read-only project operations and LegacyHost/RemoteClient path.
 
 ## Current status
 
-- [x] Repository and foundation documentation established.
-- [x] EPLAN AI Bridge 0.1 architecture approved.
-- [x] Sequential implementation plan M0 → M1 approved.
-- [x] Repository designated as source of truth and long-term project memory.
-- [x] Gate A1: real EPLAN 2.9 development environment validated.
-- [~] Gate A2: real AddIn build PASS; registration/load/direct action still blocked; later RemoteClient test pending.
+- [x] Repository/foundation documentation established.
+- [x] Architecture 0.1 approved.
+- [x] Sequential M0 -> M1 plan approved.
+- [x] Gate A1 validated.
 - [x] Task 1: repository scaffold and CI — branch `m0/task-1-scaffold`, draft PR #3.
-- [x] Task 2: versioned bridge contracts — branch `m0/task-2-contracts`, issue #4 closed, draft stacked PR #5.
-- [x] Task 3: secure local spool — branch `m0/task-3-spool`, issue #6 closed, draft stacked PR #7.
-- [~] Task 4: minimal AddIn + fixed `AudeuAiDispatch` implemented, CI-green, real EPLAN 2.9.4 build PASS; Issue #8 remains open while runtime registration/load is diagnosed.
-- [ ] Task 5: project session and read-only EPLAN operations.
+- [x] Task 2: versioned bridge contracts — branch `m0/task-2-contracts`, issue #4 closed, draft PR #5.
+- [x] Task 3: secure local spool — branch `m0/task-3-spool`, issue #6 closed, draft PR #7.
+- [x] Task 4: minimal AddIn + fixed `AudeuAiDispatch` — branch `m0/task-4-dispatch`, Issue #8 completed, draft PR #11.
+- [ ] Task 5: project session + read-only EPLAN operations.
 - [ ] Task 6: LegacyHost RemoteClient gateway.
-- [ ] Gate B / M0: prove read-only bridge on real EPLAN 2.9.
-- [ ] Gate C / M1: prove safe Function Text Preview → Apply → Verify → Undo/Rollback.
+- [ ] Gate B / M0: prove complete read-only bridge on real EPLAN 2.9.
+- [ ] Gate C / M1: prove safe Function Text Preview -> Apply -> Verify -> Undo/Rollback.
 
 ## Test runner ruling
 
-The project uses xUnit v3. Test projects are executable test applications. With the .NET 8 SDK used in CI, `dotnet test` is routed through Microsoft Testing Platform with:
-
-```xml
-<OutputType>Exe</OutputType>
-<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
-```
-
-A green workflow step alone is not test evidence. Completion evidence must include a runner summary with a non-zero executed-test count.
+xUnit v3 test projects are executable test applications. CI completion evidence must contain non-zero executed-test counts; a green step without an executed-test summary is insufficient.
 
 ## Task 1 — scaffold
 
-Created the solution/project shells, shared MSBuild configuration, central package versions, EPLAN API-path guards, MCP/Contracts shells and Windows CI.
+Implemented solution/project shells, shared MSBuild configuration, central packages, EPLAN API path guards, MCP/Contracts shells and Windows CI.
+
+Evidence: CI `39959463954` success.
+
+## Task 2 — contracts
+
+Implemented protocol `1.0`, `BridgeRequest` / `BridgeResponse`, session-scoped `ObjectReference`, stable error codes, and initial Change Plan contracts.
+
+Evidence: CI `39975775380` success; Contracts **18/18**.
+
+## Task 3 — secure spool
+
+Implemented fixed root `%LOCALAPPDATA%\Audeu\EplanAiBridge`, GUID request/response names, request/response size limits, temp + same-directory rename, duplicate fail-closed behavior, response ID verification and stale cleanup.
 
 Evidence:
 
-- CI run `39959463954` — success;
-- Contracts and MCP build independently of EPLAN;
-- AddIn and LegacyHost intentionally fail with a clear prerequisite message when `EplanApi29Dir` is absent.
-
-Ruling: `Audeu.EplanAi.LegacyHost.Tests` targets `net472` because it references a `net472` project. Contracts/MCP tests remain `net8.0`; LegacyHost/AddIn integration tests are `net472`.
-
-## Task 2 — versioned bridge contracts
-
-Implemented:
-
-- protocol version `1.0` and explicit compatibility check;
-- `BridgeRequest` / `BridgeResponse`;
-- session-scoped `ObjectReference`;
-- initial stable error codes;
-- `ChangeOperation` and immutable-identity `ChangePlan`;
-- state transitions only `previewed -> applied|failed`.
-
-Verified branch-head evidence:
-
-- CI run `39975775380` — SUCCESS;
-- Contracts: **18 passed, 0 failed, 0 skipped**;
-- MCP build passed;
-- both negative EPLAN API guards passed.
-
-No EPLAN assembly or serializer package dependency was added to `Audeu.EplanAi.Contracts`.
-
-## Task 3 — secure local spool
-
-Implemented:
-
-- fixed root `%LOCALAPPDATA%\Audeu\EplanAiBridge`;
-- canonical GUID request/response filenames;
-- request limit 1 MiB and response limit 16 MiB;
-- request temp-write + same-directory rename;
-- duplicate request fail-closed behavior;
-- typed response read + RequestId verification;
-- stale request/response cleanup;
-- test-only `SkipEplanApiValidation=true` for EPLAN-independent LegacyHost unit tests while ordinary runtime builds still require `EplanApi29Dir`.
-
-TDD/verification evidence:
-
-- valid RED run `39975854174` after 18/18 Contracts passed; spool tests then failed on missing production namespaces;
+- RED `39975854174`;
 - implementation commit `08e386f9e690dc8dece51c96a20b659dd49c0512`;
-- synchronized branch-head run `39976839719` — SUCCESS;
-- PR run `39976847095` — SUCCESS;
-- Contracts: **18/18**;
-- LegacyHost spool: **8/8**;
-- MCP build and both EPLAN guards passed.
+- synchronized branch CI `39976839719` success;
+- PR CI `39976847095` success;
+- Contracts **18/18**;
+- LegacyHost spool **8/8**.
 
 ## Task 4 — minimal AddIn and fixed dispatch action
 
-Canonical tracking: Issue #8. Issues #9 and #10 are closed duplicates created by repeated API invocations and contain no project work.
+Canonical tracking: Issue #8. Branch `m0/task-4-dispatch`. Draft stacked PR #11 remains unmerged.
 
-Branch: `m0/task-4-dispatch`, based on Task 3 head.
-
-Repo-side implementation:
+Implemented:
 
 - exactly one `EplanAddIn : IEplAddIn`;
-- exactly one `AudeuAiDispatchAction : IEplAction`;
-- fixed EPLAN action name `AudeuAiDispatch`, ordinal `20`;
-- only `REQUESTID` is consumed by the EPLAN action;
-- `REQUESTID` must be canonical GUID `D` format;
-- malformed/missing IDs fail closed;
-- AddIn reads request from fixed spool and writes matching response to fixed spool;
-- operation registry is an explicit whitelist;
-- first whitelisted operation is `system.status`;
-- unknown operation returns `BRIDGE_UNKNOWN_OPERATION`;
-- protocol mismatch returns `PROTOCOL_MISMATCH`;
-- no bridge operation is forwarded as an arbitrary EPLAN action name;
-- no arbitrary filesystem path enters the dispatch interface.
+- exactly one bridge `AudeuAiDispatchAction : IEplAction`;
+- fixed action `AudeuAiDispatch`, ordinal `20`;
+- only canonical GUID `REQUESTID` accepted;
+- fixed local spool paths only;
+- explicit operation whitelist;
+- first operation `system.status`;
+- stable protocol mismatch/unknown operation errors;
+- valid request processing exceptions surface as `INTERNAL_ERROR` responses;
+- diagnostic lifecycle/action logs for real-workstation validation;
+- UTF-8 BOM-tolerant request reader to handle Windows PowerShell 5.1 generated requests;
+- validation harness writes UTF-8 without BOM and reads responses explicitly as UTF-8.
 
-### Task 4 test-only EPLAN API stubs ruling
+### Task 4 important real-API findings
 
-GitHub runners do not have the licensed EPLAN 2.9 API assemblies. For the thin EPLAN adapter tests only, `UseEplanApiStubs=true` compiles a test-support file containing only the EPLAN 2.9 signatures used by Task 4 (`IEplAddIn`, `IEplAction`, `ActionCallingContext`, `ActionProperties`).
+1. Real EPLAN 2.9.4 `ActionProperties` does not expose `Description`, despite an EPLAN documentation example using it. CI stub was corrected; `GetActionProperties(ref ActionProperties)` is a no-op.
+2. `IEplAddIn.OnRegister()` is not expected to repeat for an already registered module. Real load proof is `OnInit/OnInitGui/OnExit` plus ShadowCopy location.
+3. Windows PowerShell 5.1 `Set-Content -Encoding UTF8` adds a BOM. Direct `DataContractJsonSerializer.ReadObject()` on the raw stream rejected it. Regression coverage now proves BOM-prefixed requests are accepted.
 
-This switch is opt-in and test-only. Normal AddIn builds still require the real `EplanApi29Dir`; CI continues verifying that the production guard is intact. Stub-backed CI therefore proves bridge logic and adapter shape, not binary compatibility with the actual workstation assemblies.
+### Task 4 TDD / CI evidence
 
-The 2026-10-26 real-workstation build exposed an important stub mismatch: the installed EPLAN 2.9.4 `ActionProperties` does not expose `Description`. The stub was corrected to match the real assembly shape and `GetActionProperties(ref ActionProperties)` was changed to a no-op. This is covered by regression TDD.
+Initial implementation:
 
-### Task 4 TDD evidence
+- RED commit `7d4ea1a75ce4d57b845627744826b3c57ba0d34b`, CI `40017002588`;
+- GREEN commit `ded33eec743cdb444fac79a2e9af9e35a276ee59`, CI `40017268214`;
+- repo-side verification CI `40017826313`.
 
-Initial RED/GREEN:
+Real API compatibility regression:
 
-- RED commit `7d4ea1a75ce4d57b845627744826b3c57ba0d34b`;
-- CI run `40017002588`;
-- Contracts **18/18** and spool **8/8** passed first;
-- AddIn step failed specifically because production `Actions`, `Dispatch`, `Serialization` and `AudeuAiDispatchAction` were absent;
-- implementation commit `ded33eec743cdb444fac79a2e9af9e35a276ee59`;
-- initial GREEN CI `40017268214` — SUCCESS;
-- local-validation/docs commit `77fb10167f90d3f52679abcb27c02fdbf12e1175`;
-- repo-side verification CI `40017826313` — SUCCESS.
+- workstation CS1061 on `ActionProperties.Description`;
+- RED commit `f1965572044651ca5e5fa78b10b7017916bdb586`, CI `40293424745`;
+- GREEN commit `11f77768bf21e580b7d9ec284ab73647985e30db`, CI `40293650296`.
 
-Real-API regression RED/GREEN on 2026-10-26:
+Runtime diagnostics:
 
-- workstation real build reached EPLAN 2.9.4 assemblies and failed with CS1061 because `ActionProperties.Description` is unavailable;
-- RED commit `f1965572044651ca5e5fa78b10b7017916bdb586` corrected the stub shape and reproduced the same CS1061 in CI run `40293424745`;
-- GREEN fix commit `11f77768bf21e580b7d9ec284ab73647985e30db` removed the unavailable member access while retaining the required interface method;
-- GREEN CI run `40293650296` — SUCCESS.
+- swallowed-exception RED CI `40297747094`;
+- GREEN commit `27efa2eefcfa441872c6bb775d6b6e90efc6c4ca`, CI `40298100354`;
+- action lifecycle instrumentation then confirmed real `Constructor` and `OnRegister:name=AudeuAiDispatch;ordinal=20`.
 
-Runtime diagnostic regression on 2026-10-26:
+UTF-8 BOM regression:
 
-- real `AudeuAiDispatch /REQUESTID:<guid>` calls produced EPLAN `S336001` and no response even after 90 seconds;
-- a regression test proved PowerShell request JSON with `Arguments:{}` is valid for the AddIn serializer, ruling out the suspected dictionary shape mismatch;
-- RED CI run `40297747094`: Contracts 18/18 and spool 8/8 passed; AddIn diagnostic suite reported 11 passed / 1 failed because dispatch exceptions were still swallowed;
-- GREEN commit `27efa2eefcfa441872c6bb775d6b6e90efc6c4ca` now surfaces valid-request processing exceptions as `INTERNAL_ERROR` spool responses;
-- GREEN CI run `40298100354`: Contracts **18/18**, LegacyHost spool **8/8**, AddIn **12/12**, MCP build and guards success;
-- a subsequent real 90-second timeout still produced no response, therefore `AudeuAiDispatchAction.Execute()` is not being reached far enough to use the diagnostic response path; runtime AddIn registration/loading is now the primary blocker.
+- real workstation reached `Execute()` and returned `INTERNAL_ERROR SerializationException` on unexpected leading BOM character;
+- RED commit `b401dbc5ecb39b2b5fe630c2c82bc32ff77de007`, CI `40303297164`: AddIn **12 passed / 1 failed**, BOM test was the single failure;
+- GREEN implementation commits `3abadff8358f09d359a22b773aef3398ed720c6e` and `ebcc7ddf32565ea3c15acc815a2367de16250e24`;
+- GREEN CI `40303614597`: Contracts **18/18**, LegacyHost spool **8/8**, AddIn **13/13**, MCP build and prerequisite guards success.
 
-### Task 4 registration lifecycle probe
+### Task 4 real-workstation acceptance — PASS
 
-To distinguish registration/load failure from action execution failure, the branch now records AddIn lifecycle callbacks to:
-
-`%LOCALAPPDATA%\Audeu\EplanAiBridge\diagnostics\addin-lifecycle.log`
-
-`verify-task4-build.ps1 -Register` now:
-
-- requires EPLAN to be closed first;
-- builds against the real API;
-- launches `EPLAN.exe` directly with `/Variant:"Electric P8" /NoLoadWorkspace /NoSplash /Auto`;
-- invokes `EplApiModuleAction /register:<dll>`;
-- waits for the clean registration process to exit;
-- requires an `OnRegister` marker before reporting registration PASS.
-
-`test-task4-status-roundtrip.ps1` likewise uses a clean direct `EPLAN.exe` `/Auto` process and includes the lifecycle log in timeout diagnostics.
-
-### Task 4 real-workstation validation
-
-**Real AddIn build: PASS on 2026-10-26.**
-
-Command:
-
-```powershell
-.\scripts\verify-task4-build.ps1
-```
-
-Verified output:
+Real build:
 
 ```text
-Audeu.EplanAi.Contracts netstandard2.0 ... success
-Audeu.EplanAi.AddIn net472 ... success
-PASS: real-API AddIn build produced ...\src\Audeu.EplanAi.AddIn\bin\Release\net472\Audeu.EplanAi.AddIn.dll
+PASS: real-API AddIn build produced ...\Audeu.EplanAi.AddIn.dll
 ```
 
-Current runtime blocker: registration/load has not yet been proven. The previous launch-style registration started EPLAN but subsequent direct action calls returned S336001 and no spool response.
-
-Next diagnostic command after pulling the latest branch, with EPLAN fully closed:
-
-```powershell
-.\scripts\verify-task4-build.ps1 -Register
-```
-
-A successful registration probe must include:
+Real module/action registration evidence:
 
 ```text
-PASS: EPLAN called IEplAddIn.OnRegister.
+OnInit
+OnInitGui
+OnExit
+Constructor
+OnRegister:entered
+OnRegister:name=AudeuAiDispatch;ordinal=20
 ```
 
-Only after that run:
-
-```powershell
-.\scripts\test-task4-status-roundtrip.ps1
-```
-
-Expected final output:
+Final real `system.status` round-trip on 2026-10-26:
 
 ```text
-PASS: AudeuAiDispatch system.status round-trip succeeded for <guid>
+Launching AudeuAiDispatch for request ea766505-2090-4c57-b931-4063bb03ae28
+PASS: AudeuAiDispatch system.status round-trip succeeded for ea766505-2090-4c57-b931-4063bb03ae28
+Execute:entered
+Execute:request-id=ea766505-2090-4c57-b931-4063bb03ae28
+Execute:success
 ```
 
-Until registration lifecycle and this real-workstation round-trip pass, Task 4 and the relevant Gate A2 portion remain open. RemoteClient validation remains Task 6.
+This proves the real EPLAN path:
+
+```text
+EPLAN 2.9.4
+ -> ShadowCopy AddIn load
+ -> IEplAction discovery/registration
+ -> AudeuAiDispatch Execute
+ -> fixed request spool read
+ -> whitelisted system.status dispatch
+ -> fixed response spool write
+ -> caller response verification
+```
+
+**Task 4 is complete. Issue #8 may be closed.**
 
 ## Immediate next actions
 
-1. Do not merge PR #3, #5, #7 or the Task 4 PR without explicit user approval.
-2. Pull branch `m0/task-4-dispatch`, fully close EPLAN, and run `scripts\verify-task4-build.ps1 -Register`.
-3. Preserve the full registration probe output and any EPLAN system message.
-4. If `OnRegister` is confirmed, run `scripts\test-task4-status-roundtrip.ps1`.
-5. If `OnRegister` is not reached, investigate module loading prerequisites first (assembly naming/location/dependency resolution) rather than spool or dispatch logic.
-6. Only after Task 4 Gate A2 passes advance to Task 5 read-only DataModel work; do not start M1 write work until Gate B / M0 passes.
+1. Do not merge PR #3, #5, #7, or #11 without explicit user approval.
+2. Start Task 5 from the validated Task 4 head: project session identity and read-only EPLAN operations.
+3. Task 5 target operations: active project, page list, selection and object reads; no writes.
+4. Task 6 will then validate `EplanRemoteClient` and the LegacyHost -> EPLAN action path.
+5. Do not start M1 write work until Gate B / M0 passes on real EPLAN 2.9.
 
 ## Release 0.1 boundaries
 
