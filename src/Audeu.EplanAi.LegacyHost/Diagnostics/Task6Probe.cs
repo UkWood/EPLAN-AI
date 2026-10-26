@@ -21,6 +21,8 @@ namespace Audeu.EplanAi.LegacyHost.Diagnostics
 
         public static async Task<int> RunAsync()
         {
+            Console.WriteLine("LegacyHost process architecture: " + (Environment.Is64BitProcess ? "x64" : "x86"));
+
             using (var adapter = new EplanRemoteClientAdapter())
             {
                 PrintDiscoveredServers(adapter.DiscoverLocalServers());
