@@ -1,6 +1,7 @@
 using System;
 using Audeu.EplanAi.AddIn.Dispatch;
 using Audeu.EplanAi.AddIn.Serialization;
+using Audeu.EplanAi.Contracts;
 using Eplan.EplApi.ApplicationFramework;
 
 namespace Audeu.EplanAi.AddIn.Actions
@@ -48,9 +49,23 @@ namespace Audeu.EplanAi.AddIn.Actions
                 _spool.WriteResponse(response);
                 return true;
             }
-            catch
+            catch (Exception exception)
             {
-                return false;
+                try
+                {
+                    _spool.WriteResponse(new BridgeResponse
+                    {
+                        RequestId = requestId,
+                        Success = false,
+                        ErrorCode = BridgeErrorCodes.InternalError,
+                        ErrorMessage = exception.GetType().Name + ": " + exception.Message
+                    });
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
             }
         }
 
