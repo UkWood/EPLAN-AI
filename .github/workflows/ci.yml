@@ -44,6 +44,18 @@ jobs:
           dotnet restore .\tests\Audeu.EplanAi.AddIn.IntegrationTests\Audeu.EplanAi.AddIn.IntegrationTests.csproj -p:UseEplanApiStubs=true
           dotnet test .\tests\Audeu.EplanAi.AddIn.IntegrationTests\Audeu.EplanAi.AddIn.IntegrationTests.csproj -c Release --no-restore -p:UseEplanApiStubs=true
 
+      - name: Print AddIn test failure diagnostics
+        if: failure()
+        shell: pwsh
+        run: |
+          $root = '.\tests\Audeu.EplanAi.AddIn.IntegrationTests\bin\Release\net472\TestResults'
+          if (Test-Path $root) {
+            Get-ChildItem $root -Recurse -Filter '*.log' | ForEach-Object {
+              Write-Host "===== $($_.FullName) ====="
+              Get-Content $_.FullName
+            }
+          }
+
       - name: Restore and build MCP shell
         shell: pwsh
         run: |
