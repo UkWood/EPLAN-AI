@@ -1,21 +1,28 @@
 param(
     [string]$EplanApi29Dir = 'C:\Program Files\EPLAN\Platform\2.9.4\Bin',
-    [int]$TimeoutSeconds = 30
+    [int]$TimeoutSeconds = 90
 )
 
 $ErrorActionPreference = 'Stop'
-$hostExe = Join-Path $EplanApi29Dir 'W3u.exe'
+$hostExe = Join-Path $EplanApi29Dir 'EPLAN.exe'
 if (-not (Test-Path $hostExe)) {
-    $hostExe = Join-Path $EplanApi29Dir 'EPLAN.exe'
+    $hostExe = Join-Path $EplanApi29Dir 'W3u.exe'
 }
 if (-not (Test-Path $hostExe)) {
-    throw "Neither W3u.exe nor EPLAN.exe was found in $EplanApi29Dir"
+    throw "Neither EPLAN.exe nor W3u.exe was found in $EplanApi29Dir"
+}
+
+$runningEplan = Get-Process -Name 'EPLAN' -ErrorAction SilentlyContinue
+if ($runningEplan) {
+    throw 'EPLAN.exe is already running. Close EPLAN completely before the Task 4 round-trip so the command-line action runs in a clean process.'
 }
 
 $requestId = [Guid]::NewGuid()
 $root = Join-Path $env:LOCALAPPDATA 'Audeu\EplanAiBridge'
 $requestDir = Join-Path $root 'requests'
 $responseDir = Join-Path $root 'responses'
+$diagnosticsDir = Join-Path $root 'diagnostics'
+$lifecycleLog = Join-Path $diagnosticsDir 'addin-lifecycle.log'
 New-Item -ItemType Directory -Force -Path $requestDir | Out-Null
 New-Item -ItemType Directory -Force -Path $responseDir | Out-Null
 
@@ -34,12 +41,15 @@ $request | ConvertTo-Json -Compress | Set-Content -Path $requestPath -Encoding U
 
 $arguments = @(
     '/Variant:"Electric P8"',
+    '/NoLoadWorkspace',
+    '/NoSplash',
+    '/Auto',
     'AudeuAiDispatch',
     "/REQUESTID:$($requestId.ToString('D'))"
 )
 
 Write-Host "Launching AudeuAiDispatch for request $requestId"
-Start-Process -FilePath $hostExe -ArgumentList $arguments
+$process = Start-Process -FilePath $hostExe -ArgumentList $arguments -PassThru
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 while ((Get-Date) -lt $deadline -and -not (Test-Path $responsePath)) {
@@ -47,7 +57,14 @@ while ((Get-Date) -lt $deadline -and -not (Test-Path $responsePath)) {
 }
 
 if (-not (Test-Path $responsePath)) {
-    throw "No response was produced within $TimeoutSeconds seconds. Request: $requestPath"
+    $processState = if ($process.HasExited) { "EPLAN exited with code $($process.ExitCode)" } else { 'EPLAN process is still running' }
+    $lifecycleText = if (Test-Path $lifecycleLog) {
+        (Get-Content -Path $lifecycleLog | Select-Object -Last 10) -join [Environment]::NewLine
+    } else {
+        '<no add-in lifecycle log>'
+    }
+
+    throw "No response was produced within $TimeoutSeconds seconds. $processState. Request: $requestPath`nLifecycle:`n$lifecycleText"
 }
 
 $response = Get-Content -Raw -Path $responsePath | ConvertFrom-Json
