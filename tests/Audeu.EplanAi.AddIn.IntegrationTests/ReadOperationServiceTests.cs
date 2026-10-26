@@ -68,7 +68,7 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
 
             Assert.True(response.Success);
             Assert.Contains("\"ordinal\":1", response.DataJson);
-            Assert.Contains("\"name\":\"=A/1\"", response.DataJson);
+            Assert.Contains("\"name\":\"=A\\/1\"", response.DataJson);
             Assert.Contains("\"ordinal\":2", response.DataJson);
         }
 
