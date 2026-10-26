@@ -149,11 +149,11 @@ public sealed class EplanReadToolsTests
     private sealed class RecordingBridgeClient : IBridgeClient
     {
         private readonly string _dataJson;
-        private readonly Func<BridgeRequest, BridgeResponse>? _responseFactory;
+        private readonly Func<BridgeRequest, BridgeResponse> _responseFactory;
 
         public RecordingBridgeClient(
             string dataJson = "{}",
-            Func<BridgeRequest, BridgeResponse>? responseFactory = null)
+            Func<BridgeRequest, BridgeResponse> responseFactory = null)
         {
             _dataJson = dataJson;
             _responseFactory = responseFactory;
