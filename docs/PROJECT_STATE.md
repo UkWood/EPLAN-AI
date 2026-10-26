@@ -4,7 +4,7 @@
 **Repository:** `UkWood/EPLAN-AI`  
 **Target platform:** EPLAN Electric P8 Professional 64-bit, 2.9 SP1 Update 4, build 14773  
 **Current release target:** `0.1`  
-**Updated:** 2026-10-23
+**Updated:** 2026-10-26
 
 ## Purpose of this file
 
@@ -42,7 +42,7 @@ Key rule: the LLM does not receive unrestricted EPLAN API access. It works throu
 
 ## Verified target workstation
 
-Confirmed on 2026-10-23:
+Confirmed on 2026-10-23 and extended with real build evidence on 2026-10-26:
 
 - EPLAN Electric P8 Professional (64-bit);
 - version 2.9 SP1 Update 4;
@@ -50,14 +50,16 @@ Confirmed on 2026-10-23:
 - EPLAN API / API Extension available;
 - `EplanApi29Dir = C:\Program Files\EPLAN\Platform\2.9.4\Bin`;
 - required add-in DLLs present: `Eplan.EplApi.AFu.dll`, `Baseu.dll`, `DataModelu.dll`, `HEServicesu.dll`;
-- required Remoting DLLs present: `Eplan.EplApi.RemoteClientu.dll`, `Remotingu.dll`.
+- required Remoting DLLs present: `Eplan.EplApi.RemoteClientu.dll`, `Remotingu.dll`;
+- .NET SDK x64 available under `C:\Program Files\dotnet` (SDK 8.0.427 confirmed);
+- `Audeu.EplanAi.AddIn` now compiles successfully against the real EPLAN 2.9.4 API assemblies.
 
 Gate A is split into:
 
 - **Gate A1 — development environment:** PASS;
-- **Gate A2 — runtime integration:** PARTIAL / pending real workstation validation.
+- **Gate A2 — runtime integration:** PARTIAL. Real AddIn build is PASS; registration/load/action round-trip are still pending. RemoteClient remains Task 6.
 
-Task 4 now contains code and scripts to prove the first Gate A2 parts (real AddIn build/load/action round-trip). The RemoteClient portion remains Task 6. Gate B / M0 still requires all relevant Gate A2 checks to pass.
+Gate B / M0 still requires all relevant Gate A2 checks to pass.
 
 ## Current status
 
@@ -66,11 +68,11 @@ Task 4 now contains code and scripts to prove the first Gate A2 parts (real AddI
 - [x] Sequential implementation plan M0 → M1 approved.
 - [x] Repository designated as source of truth and long-term project memory.
 - [x] Gate A1: real EPLAN 2.9 development environment validated.
-- [~] Gate A2: repo-side AddIn implementation ready; real build/load/direct action test and later RemoteClient test still pending.
+- [~] Gate A2: real AddIn build PASS; registration/load/direct action test and later RemoteClient test still pending.
 - [x] Task 1: repository scaffold and CI — branch `m0/task-1-scaffold`, draft PR #3.
 - [x] Task 2: versioned bridge contracts — branch `m0/task-2-contracts`, issue #4 closed, draft stacked PR #5.
 - [x] Task 3: secure local spool — branch `m0/task-3-spool`, issue #6 closed, draft stacked PR #7.
-- [~] Task 4: minimal AddIn + fixed `AudeuAiDispatch` implemented and CI-green; Issue #8 remains open pending real EPLAN validation.
+- [~] Task 4: minimal AddIn + fixed `AudeuAiDispatch` implemented, CI-green, and real EPLAN 2.9.4 build PASS; Issue #8 remains open pending registration/load and status round-trip.
 - [ ] Task 5: project session and read-only EPLAN operations.
 - [ ] Task 6: LegacyHost RemoteClient gateway.
 - [ ] Gate B / M0: prove read-only bridge on real EPLAN 2.9.
@@ -166,42 +168,58 @@ Repo-side implementation:
 
 ### Task 4 test-only EPLAN API stubs ruling
 
-GitHub runners do not have the licensed EPLAN 2.9 API assemblies. For the thin EPLAN adapter tests only, `UseEplanApiStubs=true` compiles a test-support file containing only the officially verified EPLAN 2.9 signatures used by Task 4 (`IEplAddIn`, `IEplAction`, `ActionCallingContext`, `ActionProperties`).
+GitHub runners do not have the licensed EPLAN 2.9 API assemblies. For the thin EPLAN adapter tests only, `UseEplanApiStubs=true` compiles a test-support file containing only the EPLAN 2.9 signatures used by Task 4 (`IEplAddIn`, `IEplAction`, `ActionCallingContext`, `ActionProperties`).
 
 This switch is opt-in and test-only. Normal AddIn builds still require the real `EplanApi29Dir`; CI continues verifying that the production guard is intact. Stub-backed CI therefore proves bridge logic and adapter shape, not binary compatibility with the actual workstation assemblies.
 
+The 2026-10-26 real-workstation build exposed an important stub mismatch: the installed EPLAN 2.9.4 `ActionProperties` does not expose `Description`. The stub was corrected to match the real assembly shape and `GetActionProperties(ref ActionProperties)` was changed to a no-op. This is now covered by regression TDD.
+
 ### Task 4 TDD evidence
 
-RED:
+Initial RED/GREEN:
 
-- commit `7d4ea1a75ce4d57b845627744826b3c57ba0d34b`;
+- RED commit `7d4ea1a75ce4d57b845627744826b3c57ba0d34b`;
 - CI run `40017002588`;
 - Contracts **18/18** and spool **8/8** passed first;
-- AddIn step failed specifically because production `Actions`, `Dispatch`, `Serialization` and `AudeuAiDispatchAction` were absent.
-
-GREEN:
-
+- AddIn step failed specifically because production `Actions`, `Dispatch`, `Serialization` and `AudeuAiDispatchAction` were absent;
 - implementation commit `ded33eec743cdb444fac79a2e9af9e35a276ee59`;
 - initial GREEN CI `40017268214` — SUCCESS;
 - local-validation/docs commit `77fb10167f90d3f52679abcb27c02fdbf12e1175`;
-- final repo-side verification CI `40017826313` — SUCCESS;
+- repo-side verification CI `40017826313` — SUCCESS.
+
+Real-API regression RED/GREEN on 2026-10-26:
+
+- workstation real build reached EPLAN 2.9.4 assemblies and failed with CS1061 at `AudeuAiDispatchAction.cs` because `ActionProperties.Description` is unavailable;
+- RED commit `f1965572044651ca5e5fa78b10b7017916bdb586` corrected the stub shape and reproduced the same CS1061 in CI run `40293424745`;
+- GREEN fix commit `11f77768bf21e580b7d9ec284ab73647985e30db` removed the unavailable member access while retaining the required interface method;
+- GREEN CI run `40293650296` — SUCCESS;
 - Contracts: **18/18**;
 - LegacyHost spool: **8/8**;
 - AddIn dispatch: **10/10**;
 - MCP build: success;
 - ordinary AddIn and LegacyHost negative EPLAN API guards: success.
 
-### Task 4 real-workstation validation still required
+### Task 4 real-workstation validation
 
-Run on the verified EPLAN workstation from the repository root on branch `m0/task-4-dispatch`:
+**Real AddIn build: PASS on 2026-10-26.**
+
+Command:
 
 ```powershell
 .\scripts\verify-task4-build.ps1
 ```
 
-Expected: AddIn builds against the actual 2.9.4 API assemblies.
+Verified output:
 
-Then register/load the module:
+```text
+Audeu.EplanAi.Contracts netstandard2.0 ... success
+Audeu.EplanAi.AddIn net472 ... success
+PASS: real-API AddIn build produced ...\src\Audeu.EplanAi.AddIn\bin\Release\net472\Audeu.EplanAi.AddIn.dll
+```
+
+This confirms compilation against the actual EPLAN 2.9.4 API assemblies in `C:\Program Files\EPLAN\Platform\2.9.4\Bin`.
+
+Still required:
 
 ```powershell
 .\scripts\verify-task4-build.ps1 -Register
@@ -219,16 +237,15 @@ Expected final output includes:
 PASS: AudeuAiDispatch system.status round-trip succeeded for <guid>
 ```
 
-Until these real-workstation checks pass, Task 4 and the relevant Gate A2 portion remain open. RemoteClient validation remains Task 6.
+Until registration/load and this real-workstation round-trip pass, Task 4 and the relevant Gate A2 portion remain open. RemoteClient validation remains Task 6.
 
 ## Immediate next actions
 
 1. Do not merge PR #3, #5, #7 or the Task 4 PR without explicit user approval.
-2. Run `scripts\verify-task4-build.ps1` on the verified EPLAN 2.9 workstation and preserve full output.
-3. If real build passes, register/load via `verify-task4-build.ps1 -Register`.
-4. Run `scripts\test-task4-status-roundtrip.ps1` and preserve PASS/error output.
-5. Record real Gate A2 evidence in Issue #8 and this file.
-6. Only then advance to Task 5 read-only DataModel work; do not start M1 write work until Gate B / M0 passes.
+2. Register/load the real AddIn via `scripts\verify-task4-build.ps1 -Register` and preserve full output / any EPLAN message.
+3. Run `scripts\test-task4-status-roundtrip.ps1` and preserve PASS/error output.
+4. Record registration/load and direct action Gate A2 evidence in Issue #8 and this file.
+5. Only then advance to Task 5 read-only DataModel work; do not start M1 write work until Gate B / M0 passes.
 
 ## Release 0.1 boundaries
 
