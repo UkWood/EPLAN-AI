@@ -1,7 +1,7 @@
 param(
     [string]$EplanApi29Dir = 'C:\Program Files\EPLAN\Platform\2.9.4\Bin',
     [switch]$Register,
-    [int]$RegistrationTimeoutSeconds = 60
+    [int]$RegistrationTimeoutSeconds = 300
 )
 
 $ErrorActionPreference = 'Stop'
@@ -59,6 +59,7 @@ $arguments = @(
 )
 
 Write-Host "Starting clean EPLAN registration via EplApiModuleAction..."
+Write-Host "Waiting up to $RegistrationTimeoutSeconds seconds for EPLAN startup + registration..."
 $process = Start-Process -FilePath $hostExe -ArgumentList $arguments -PassThru
 
 if (-not $process.WaitForExit($RegistrationTimeoutSeconds * 1000)) {
