@@ -45,19 +45,16 @@ namespace Audeu.EplanAi.LegacyHost.Tests
             var methods = typeof(IRemoteClientAdapter)
                 .GetMethods()
                 .Select(method => method.Name)
-                .OrderBy(name => name)
                 .ToArray();
 
-            Assert.Equal(new[]
-            {
-                "Connect",
-                "Disconnect",
-                "DiscoverLocalServers",
-                "ExecuteAction",
-                "Ping",
-                "get_SynchronousMode",
-                "set_SynchronousMode"
-            }, methods);
+            Assert.Equal(7, methods.Length);
+            Assert.Contains("Connect", methods);
+            Assert.Contains("Disconnect", methods);
+            Assert.Contains("DiscoverLocalServers", methods);
+            Assert.Contains("ExecuteAction", methods);
+            Assert.Contains("Ping", methods);
+            Assert.Contains("get_SynchronousMode", methods);
+            Assert.Contains("set_SynchronousMode", methods);
 
             Assert.Equal(typeof(IReadOnlyList<RemoteServerInfo>),
                 typeof(IRemoteClientAdapter).GetMethod("DiscoverLocalServers").ReturnType);
