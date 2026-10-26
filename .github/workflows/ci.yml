@@ -38,6 +38,18 @@ jobs:
           dotnet restore .\tests\Audeu.EplanAi.LegacyHost.Tests\Audeu.EplanAi.LegacyHost.Tests.csproj -p:SkipEplanApiValidation=true
           dotnet test .\tests\Audeu.EplanAi.LegacyHost.Tests\Audeu.EplanAi.LegacyHost.Tests.csproj -c Release --no-restore -p:SkipEplanApiValidation=true
 
+      - name: Print LegacyHost test failure diagnostics
+        if: failure()
+        shell: pwsh
+        run: |
+          $root = '.\tests\Audeu.EplanAi.LegacyHost.Tests\bin\Release\net472\TestResults'
+          if (Test-Path $root) {
+            Get-ChildItem $root -Recurse -Filter '*.log' | ForEach-Object {
+              Write-Host "===== $($_.FullName) ====="
+              Get-Content $_.FullName
+            }
+          }
+
       - name: Restore and test AddIn dispatch with API stubs
         shell: pwsh
         run: |
