@@ -23,7 +23,7 @@ public sealed class NamedPipeBridgeClientTests
         await using var server = CreateServer();
         Task serverTask = Task.Run(async () =>
         {
-            await server.WaitForConnectionAsync();
+            await server.WaitForConnectionAsync(TestContext.Current.CancellationToken);
             BridgeRequest received = await BridgePipeProtocol.ReadRequestAsync(server, CancellationToken.None);
             Assert.Equal(request.RequestId, received.RequestId);
             Assert.Equal("system.status", received.Operation);
