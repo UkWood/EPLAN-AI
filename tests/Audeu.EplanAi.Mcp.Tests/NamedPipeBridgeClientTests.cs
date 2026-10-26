@@ -20,10 +20,11 @@ public sealed class NamedPipeBridgeClientTests
             Mode = "read"
         };
 
+        CancellationToken testCancellation = TestContext.Current.CancellationToken;
         await using var server = CreateServer();
         Task serverTask = Task.Run(async () =>
         {
-            await server.WaitForConnectionAsync(TestContext.Current.CancellationToken);
+            await server.WaitForConnectionAsync(testCancellation);
             BridgeRequest received = await BridgePipeProtocol.ReadRequestAsync(server, CancellationToken.None);
             Assert.Equal(request.RequestId, received.RequestId);
             Assert.Equal("system.status", received.Operation);
@@ -36,7 +37,7 @@ public sealed class NamedPipeBridgeClientTests
                 Success = true,
                 DataJson = "{\"status\":\"ready\"}"
             }, CancellationToken.None);
-        });
+        }, testCancellation);
 
         var client = new NamedPipeBridgeClient(TimeSpan.FromSeconds(1));
         BridgeResponse response = await client.SendAsync(request, CancellationToken.None);
