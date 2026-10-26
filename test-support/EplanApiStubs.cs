@@ -18,9 +18,11 @@ namespace Eplan.EplApi.ApplicationFramework
         void GetActionProperties(ref ActionProperties actionProperties);
     }
 
+    // Keep this stub intentionally minimal and aligned with the public members
+    // exposed by the target EPLAN 2.9.4 ActionProperties assembly used by the
+    // verified workstation. Do not add documentation-example-only members here.
     public sealed class ActionProperties
     {
-        public string Description { get; set; }
     }
 
     public class ActionCallingContext

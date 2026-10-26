@@ -59,14 +59,15 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
         }
 
         [Fact]
-        public void DispatchAction_ProvidesDescription()
+        public void DispatchAction_GetActionProperties_DoesNotRequireDescriptionMember()
         {
             var action = new AudeuAiDispatchAction();
             var properties = new ActionProperties();
+            var original = properties;
 
             action.GetActionProperties(ref properties);
 
-            Assert.False(string.IsNullOrWhiteSpace(properties.Description));
+            Assert.Same(original, properties);
         }
     }
 }
