@@ -32,6 +32,50 @@ foreach ($name in $requiredRuntime) {
     }
 }
 
+Write-Host 'EPLAN process diagnostics:'
+try {
+    $processes = Get-CimInstance Win32_Process -Filter "Name='EPLAN.exe'" -ErrorAction Stop
+    if ($processes) {
+        foreach ($process in $processes) {
+            Write-Host ("  PID {0}: {1}" -f $process.ProcessId, $process.CommandLine)
+        }
+    }
+    else {
+        Write-Host '  <no Win32_Process entry found>'
+    }
+}
+catch {
+    Write-Host ("  INFO: unable to read EPLAN command line: {0}" -f $_.Exception.Message)
+}
+
+$remoteServerRoot = 'HKCU:\Software\EPLAN\RemoteServer'
+Write-Host "EPLAN RemoteServer registry diagnostics: $remoteServerRoot"
+if (Test-Path $remoteServerRoot) {
+    $serverKeys = Get-ChildItem $remoteServerRoot -ErrorAction SilentlyContinue
+    if ($serverKeys) {
+        foreach ($key in $serverKeys) {
+            Write-Host ("  key: {0}" -f $key.PSChildName)
+            try {
+                $properties = Get-ItemProperty $key.PSPath -ErrorAction Stop
+                foreach ($property in $properties.PSObject.Properties) {
+                    if ($property.Name -notlike 'PS*') {
+                        Write-Host ("    {0} = {1}" -f $property.Name, $property.Value)
+                    }
+                }
+            }
+            catch {
+                Write-Host ("    INFO: unable to read key values: {0}" -f $_.Exception.Message)
+            }
+        }
+    }
+    else {
+        Write-Host '  <root exists but contains no active server keys>'
+    }
+}
+else {
+    Write-Host '  <RemoteServer registry root is missing>'
+}
+
 # EPLAN 2.9 RemoteClient uses managed WCF assemblies deployed beside LegacyHost.
 # Keep the EPLAN bin directory on PATH as an additional native/dependency resolution aid.
 $oldPath = $env:Path
