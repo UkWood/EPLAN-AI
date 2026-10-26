@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Audeu.EplanAi.AddIn.ReadModel;
 using Audeu.EplanAi.Contracts;
 
 namespace Audeu.EplanAi.AddIn.Dispatch
@@ -9,10 +10,24 @@ namespace Audeu.EplanAi.AddIn.Dispatch
         private readonly Dictionary<string, Func<BridgeRequest, BridgeResponse>> _operations;
 
         public OperationRegistry()
+            : this(new ReadOperationService(new EplanReadAdapter(), new ProjectSessionTracker()))
         {
+        }
+
+        public OperationRegistry(ReadOperationService readOperations)
+        {
+            if (readOperations == null)
+            {
+                throw new ArgumentNullException(nameof(readOperations));
+            }
+
             _operations = new Dictionary<string, Func<BridgeRequest, BridgeResponse>>(StringComparer.Ordinal)
             {
-                { "system.status", CreateSystemStatusResponse }
+                { "system.status", CreateSystemStatusResponse },
+                { "project.getActive", readOperations.GetActiveProject },
+                { "project.listPages", readOperations.ListPages },
+                { "selection.get", readOperations.GetSelection },
+                { "object.get", readOperations.GetObject }
             };
         }
 
