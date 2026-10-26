@@ -1,6 +1,6 @@
 param(
     [string]$EplanApi29Dir = 'C:\Program Files\EPLAN\Platform\2.9.4\Bin',
-    [int]$TimeoutSeconds = 90
+    [int]$TimeoutSeconds = 300
 )
 
 $ErrorActionPreference = 'Stop'
@@ -49,6 +49,7 @@ $arguments = @(
 )
 
 Write-Host "Launching AudeuAiDispatch for request $requestId"
+Write-Host "Waiting up to $TimeoutSeconds seconds for EPLAN startup + action execution..."
 $process = Start-Process -FilePath $hostExe -ArgumentList $arguments -PassThru
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
