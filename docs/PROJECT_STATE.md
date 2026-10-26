@@ -61,7 +61,10 @@ Confirmed 2026-10-23 and extended by real runtime/build evidence 2026-10-26:
 - `AudeuAiDispatch` registers as ordinal `20` and executes;
 - real `system.status` spool round-trip PASS;
 - real Task 5 `project.getActive` PASS for project `УСПД Жуковский ПНС`, database ID `25`, 7 pages, read-only `False`;
-- Task 6 production `Audeu.EplanAi.LegacyHost` compiles successfully against the workstation's actual EPLAN 2.9.4 `RemoteClientu.dll` / `Remotingu.dll`.
+- Task 6 production `Audeu.EplanAi.LegacyHost` compiles against the workstation's actual EPLAN 2.9.4 `RemoteClientu.dll` / `Remotingu.dll`;
+- EPLAN registers an x64 Remoting server under `HKCU\Software\EPLAN\RemoteServer\49152`;
+- real RemoteClient discovery returns `EplanCommunicationServer`, PID `6864`, variant `EPLAN Electric P8. Professional`, version `2.9.4.14773`, x64;
+- real persistent RemoteClient sequence `connect/ping -> system.status -> project.getActive -> project.listPages -> selection.get -> object.get` PASS using one `projectSessionId`.
 
 Gate status:
 
@@ -69,8 +72,8 @@ Gate status:
 - **Gate A2 — AddIn runtime:** PASS.
 - **Gate A2 — Task 5 DataModel compatibility:** PASS.
 - **Gate A2 — RemoteClient real assembly compatibility:** PASS.
-- **Gate A2 — RemoteClient runtime discovery/connect/action execution:** pending Task 6 runtime probe.
-- **Gate B / M0:** pending Task 6 real RemoteClient runtime acceptance, Task 7 named pipe, Task 8 MCP read tools and final Task 9 acceptance.
+- **Gate A2 — RemoteClient runtime discovery/connect/action execution:** PASS.
+- **Gate B / M0:** pending Task 7 named pipe, Task 8 MCP read tools and final Task 9 acceptance.
 
 ## Current status
 
@@ -79,7 +82,7 @@ Gate status:
 - [x] Task 3: secure local spool — Issue #6 completed, draft PR #7.
 - [x] Task 4: AddIn + fixed `AudeuAiDispatch` — Issue #8 completed, draft PR #11.
 - [x] Task 5: project session + read-only EPLAN inspection — Issue #12 completed, draft PR #15.
-- [~] Task 6: LegacyHost RemoteClient gateway — repo-side implementation/CI PASS and real EPLAN 2.9.4 production build PASS; real runtime validation pending. Issue #16, draft PR #17, branch `m0/task-6-remoteclient`.
+- [x] Task 6: LegacyHost RemoteClient gateway — Issue #16 completed, draft PR #17, branch `m0/task-6-remoteclient`.
 - [ ] Task 7: current-user named-pipe LegacyHost.
 - [ ] Task 8: MCP read-only tools.
 - [ ] Task 9 / Gate B: complete read-only bridge acceptance.
@@ -150,13 +153,13 @@ pageCount        : 7
 isReadOnly       : False
 ```
 
-## Task 6 — LegacyHost RemoteClient gateway — repo-side PASS / real build PASS / runtime pending
+## Task 6 — LegacyHost RemoteClient gateway — PASS
 
-Canonical tracking: Issue #16. Draft PR #17. Branch `m0/task-6-remoteclient`, stacked on validated Task 5.
+Canonical tracking: Issue #16 completed. Draft PR #17 remains open/unmerged. Branch `m0/task-6-remoteclient`, stacked on validated Task 5.
 
-### Design
+### Design and safety boundary
 
-LegacyHost remains engineering-logic-free. A thin `EplanRemoteClientAdapter` is the only class that references `Eplan.EplApi.RemoteClient`. `RemoteGateway` owns connection/session policy and the existing secure spool round-trip.
+LegacyHost remains engineering-logic-free. `EplanRemoteClientAdapter` is the only class that references `Eplan.EplApi.RemoteClient`. `RemoteGateway` owns connection/session policy and the existing secure spool round-trip.
 
 The only EPLAN action it can construct is:
 
@@ -166,99 +169,71 @@ AudeuAiDispatch /REQUESTID:<canonical-guid>
 
 No caller can provide an EPLAN action name, host, port or filesystem path.
 
-### Implemented RemoteClient behavior
+Implemented behavior:
 
 - discover active local EPLAN servers;
-- accept only 64-bit `Electric P8` version `2.9*` candidates;
+- accept only x64 Electric P8-family candidates with version `2.9*`;
 - deterministic selection by server port, then process ID;
-- `Connect("localhost", port, timeout)`;
-- force `SynchronousMode = true`;
-- require successful `Ping()`;
+- `Connect`, force `SynchronousMode = true`, require successful `Ping()`;
 - fixed-action spool round-trip;
 - stable `EPLAN_NOT_FOUND`, `EPLAN_NOT_CONNECTED`, `EPLAN_ACTION_FAILED`, `OPERATION_TIMEOUT` errors;
-- action timeout poisons/disconnects the current gateway connection;
-- persistent connection allows Task 5 requests to reuse one `projectSessionId`.
+- timeout poisons/disconnects the current gateway connection;
+- persistent connection preserves one live `projectSessionId` across Task 5 reads.
 
-Official EPLAN 2.9 API signatures used by the adapter are isolated behind `IRemoteClientAdapter` and test-only verified stubs. The installed workstation DLL is authoritative for final compatibility.
-
-### Task 6 TDD evidence
+### Task 6 TDD / CI evidence
 
 Remote contracts:
 
-- RED commit `05d3de33c83d30027ad84432a311c48625855a18`, CI `40312106175`: Contracts **18/18**, then LegacyHost compile failed because Remote types were absent;
-- minimal contract implementation followed;
-- one test-only reflection ordering assumption was corrected;
+- RED `05d3de33c83d30027ad84432a311c48625855a18`, CI `40312106175`;
 - GREEN CI `40312656987`.
 
 Gateway policy:
 
-- RED commit `117b991d6c05e6d0b446a50c4f78fdf5aa899fac`, CI `40313041462`: compile failed only because `RemoteGateway` was absent;
-- gateway implementation commit `dd07bd6c897afd7c5dc766acdad6786ef13686ce`;
-- full CI GREEN.
+- RED `117b991d6c05e6d0b446a50c4f78fdf5aa899fac`, CI `40313041462`;
+- implementation `dd07bd6c897afd7c5dc766acdad6786ef13686ce`.
 
 Real EPLAN adapter:
 
-- test-only RemoteClient API stubs and adapter contract added first;
-- RED commit `2303cb09042be9771451fbfeceb86f810b5bf2f2`, CI `40313685998`: compile failed only because `EplanRemoteClientAdapter` was absent;
-- production adapter commit `ae4350498833c7467d5d09652584404883dd6021`;
-- first subsequent run compiled and executed **20/21** LegacyHost tests, exposing one transient test failure without diagnostics;
-- CI was hardened to print LegacyHost test logs;
-- unchanged production implementation then passed full CI and an explicit rerun;
-- final repo-side implementation run `40315002086`: Contracts **18/18**, LegacyHost **21/21**, AddIn **31/31**, MCP build and both prerequisite guards PASS;
-- fresh documentation head CI `40315359634` also PASS.
+- RED `2303cb09042be9771451fbfeceb86f810b5bf2f2`, CI `40313685998`;
+- implementation `ae4350498833c7467d5d09652584404883dd6021`;
+- production LegacyHost compiles against installed EPLAN 2.9.4 assemblies;
+- managed Remoting DLL deployment regression fixed by Copy Local (`Private=true`), with GREEN CI `40321193863`;
+- discovery diagnostics proved real x64 server visibility;
+- real workstation variant `EPLAN Electric P8. Professional` exposed an overly strict exact-match filter;
+- RED `d9f48a4a3ac1d2d7e0c73f40428fd5cafb376819`, CI `40327338550`: **22/23**, only the real-variant regression test failed;
+- fix `bf01878b4303fd55d4e5c641227509be88666975` accepts Electric P8-family variant strings while retaining x64 and `2.9*` requirements;
+- GREEN CI `40327610664`: Contracts **18/18**, LegacyHost **23/23**, AddIn **31/31**, MCP build and prerequisite guards PASS.
 
-### Task 6 real-workstation build — PASS
+### Task 6 real-workstation runtime acceptance — PASS
 
-Command:
-
-```powershell
-.\scripts\verify-task6-build.ps1
-```
-
-Observed on the verified workstation:
+Observed:
 
 ```text
-Building Task 6 LegacyHost against real EPLAN RemoteClient API: C:\Program Files\EPLAN\Platform\2.9.4\Bin
-Audeu.EplanAi.Contracts netstandard2.0 successfully built
-Audeu.EplanAi.LegacyHost net472 win-x86 successfully built
-Build succeeded
-PASS: Task 6 LegacyHost compiled against real EPLAN 2.9.4 RemoteClient assemblies: E:\EPLAN\REPO\EPLAN-AI\src\Audeu.EplanAi.LegacyHost\bin\Release\net472\Audeu.EplanAi.LegacyHost.exe
+LegacyHost process architecture: x64
+RemoteClient raw active-server discovery count: 1
+name=EplanCommunicationServer; port=49152; pid=6864;
+variant=EPLAN Electric P8. Professional; version=2.9.4.14773; x64=True
+PASS: RemoteClient connected and pinged an active local EPLAN 2.9 server.
+PASS: RemoteClient SynchronousMode = True
+PASS: system.status via RemoteClient
+PASS: project.getActive via persistent RemoteClient session
+projectSessionId : 21b58d12-1213-4876-aff1-fb62a4dcad5d
+PASS: project.listPages used the same projectSessionId
+PASS: selection.get used the same projectSessionId
+PASS: object.get resolved the selected Function in the same project session
+PASS: Task 6 persistent RemoteClient read sequence completed.
+PASS: Task 6 RemoteClient probe completed successfully.
 ```
 
-This proves production LegacyHost compatibility with the workstation's actual EPLAN 2.9.4 RemoteClient assemblies. Remaining Task 6 risk is runtime discovery/connect/remoting behavior rather than compile-time API mismatch.
-
-### Task 6 runtime probe — pending
-
-1. Start EPLAN normally, without `/Auto` and without `/NoRemoting`.
-2. Open the safe test project and leave EPLAN running and idle.
-3. Prefer selecting one Function so optional `object.get` can be exercised.
-4. In a second PowerShell window run:
-
-```powershell
-.\scripts\test-task6-remoteclient.ps1
-```
-
-The diagnostic LegacyHost mode keeps one Remoting connection alive and attempts:
-
-```text
-connect + ping
-system.status
-project.getActive
-project.listPages (same projectSessionId)
-selection.get (same projectSessionId)
-object.get (if a Function is selected)
-disconnect
-```
-
-Task 6 remains open until this persistent RemoteClient sequence passes on real EPLAN 2.9.4.
+Project: `УСПД Жуковский ПНС`, database ID `25`, 7 pages. Selected Function reference was resolved in the same session. This completes Gate A2 RemoteClient runtime validation.
 
 ## Immediate next actions
 
 1. Do not merge PR #3, #5, #7, #11, #15 or #17 without explicit user approval.
-2. Keep EPLAN running normally with the safe project open; preferably select one Function.
-3. Run `scripts\test-task6-remoteclient.ps1` from a second PowerShell and preserve the complete output.
-4. If runtime discovery/connect fails, debug the actual EPLAN 2.9 Remoting state; real assembly compatibility is already proven.
-5. Only after Task 6 real runtime acceptance start Task 7 named-pipe work.
+2. Start Task 7 on a new stacked branch from the completed Task 6 head.
+3. Implement current-user Named Pipe `Audeu.EplanAi.LegacyHost.v1` between MCP and LegacyHost with strict framing/size/timeouts and no caller-controlled pipe/path names.
+4. Keep LegacyHost as the only process that knows EPLAN Remoting.
+5. After Task 7, implement Task 8 MCP read-only tools and then Task 9 / Gate B acceptance.
 6. Do not start M1 write work until Gate B / M0 passes.
 
 ## Release 0.1 boundaries
