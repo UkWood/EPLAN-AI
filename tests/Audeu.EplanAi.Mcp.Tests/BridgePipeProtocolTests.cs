@@ -1,7 +1,13 @@
+using System;
 using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Audeu.EplanAi.Contracts;
 using Audeu.EplanAi.Mcp.Transport;
+using Xunit;
 
 namespace Audeu.EplanAi.Mcp.Tests;
 
