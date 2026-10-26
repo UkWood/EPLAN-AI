@@ -92,4 +92,11 @@ Requires current session plus string arguments copied from `ObjectReference`: `d
 
 ## Real-workstation validation
 
-Add a Task 5 PowerShell harness that runs one fixed operation per clean `/Auto` EPLAN invocation. It first calls `project.getActive`, then uses the returned session for page/selection checks only within a persistent interactive-process workflow when possible. Because clean `/Auto` invocations create a new EPLAN process/session, the harness primarily validates active-project/page/selection/function projection; stale-session semantics are proven deterministically in CI and will be exercised end-to-end again at the later M0 acceptance gate with LegacyHost/RemoteClient keeping one EPLAN process alive.
+Task 5 has two workstation probes:
+
+1. `scripts/verify-task5-build.ps1` compiles the production AddIn against the actual installed EPLAN 2.9.4 assemblies. This is the compatibility gate for the exact `DataModel` / `HEServices` members used by `EplanReadAdapter`.
+2. `scripts/test-task5-active-project.ps1` performs a real `project.getActive` request through `AudeuAiDispatch`. It starts EPLAN with `/UseLastOpenedProjects:1`, so a previously opened safe test project can become active during the `/Auto` run.
+
+The CLI probe deliberately does **not** chain `project.listPages`, `selection.get` and `object.get` across separate `/Auto` runs. `projectSessionId` is intentionally scoped to one live EPLAN/AddIn runtime; every clean `/Auto` invocation creates a new runtime, so reusing the previous session ID would correctly produce `SESSION_STALE`.
+
+Session reuse/staleness, page projection, selection projection and Function-only object inspection are therefore proven deterministically in Task 5 CI. Their persistent end-to-end runtime chain is validated in Task 6 when `LegacyHost` / `EplanRemoteClient` keeps the same EPLAN process alive across multiple bridge calls. This preserves the security model instead of weakening session identity for a test harness.
