@@ -41,10 +41,10 @@
 - Produces: `ProjectSessionTracker.GetOrCreate(uint databaseIdentifier) -> Guid`, `IsCurrent(Guid,uint) -> bool`, `Clear()`.
 - Produces error constants: `NO_ACTIVE_PROJECT`, `OBJECT_NOT_FOUND`, `OBJECT_INVALID`, `OBJECT_TYPE_NOT_ALLOWED`, `VALIDATION_FAILED`.
 
-- [ ] Write tracker/error-code tests first.
-- [ ] Run AddIn tests and verify RED because tracker/constants are absent.
-- [ ] Implement the minimal tracker and constants.
-- [ ] Run AddIn tests and verify GREEN.
+- [x] Write tracker/error-code tests first.
+- [x] Verify RED because tracker/constants are absent — CI `40306260040`.
+- [x] Implement the minimal tracker and constants.
+- [x] Verify GREEN — CI `40306678839`, AddIn **17/17**.
 
 ### Task 2: Define internal snapshots and read-service semantics
 
@@ -59,13 +59,14 @@
 - `IEplanReadAdapter.GetActiveProject()` returns null or a compact `ProjectSnapshot`.
 - `IEplanReadAdapter.GetPages(uint databaseIdentifier)` returns compact page snapshots.
 - `IEplanReadAdapter.GetSelection(uint databaseIdentifier)` returns compact object snapshots carrying `ObjectReference` material.
-- `IEplanReadAdapter.ResolveFunction(uint databaseIdentifier, string stringIdentifier)` returns null/non-Function/Function snapshot outcome without exposing EPLAN objects.
-- `ReadOperationService.Handle(BridgeRequest)` dispatches exactly `project.getActive`, `project.listPages`, `selection.get`, `object.get`.
+- `IEplanReadAdapter.ResolveObject(uint databaseIdentifier, string stringIdentifier)` returns null/non-Function/Function snapshot outcome without exposing EPLAN objects.
+- `ReadOperationService` exposes fixed handlers for `project.getActive`, `project.listPages`, `selection.get`, `object.get`.
 
-- [ ] Write service tests for no project, stable/current session, stale session, page list, empty selection, malformed object args, missing object and non-Function target.
-- [ ] Run AddIn tests and verify RED because service/interfaces are absent.
-- [ ] Implement minimal snapshots, JSON helper and service.
-- [ ] Run AddIn tests and verify GREEN.
+- [x] Write service tests for no project, stable/current session, stale session, page list, empty selection, malformed object args, missing object and non-Function target.
+- [x] Verify RED because service/interfaces are absent — CI `40307026719`.
+- [x] Implement minimal snapshots, JSON helper and service.
+- [x] Diagnose one serializer-representation test mismatch (`/` serialized as `\/`) without changing production semantics.
+- [x] Verify GREEN — CI `40308065557`, AddIn **27/27**.
 
 ### Task 3: Implement real EPLAN read adapter and register fixed operations
 
@@ -79,31 +80,36 @@
 - Adapter uses `SelectionSet.GetCurrentProject(false)`, `Project.Pages`, `SelectionSet.Selection`, `StorableObject` identity members and `Function` whitelist only.
 - Registry exposes fixed operations `project.getActive`, `project.listPages`, `selection.get`, `object.get` plus existing `system.status`.
 
-- [ ] Expand test-only EPLAN stubs and write adapter/registry tests first; tests must assert fixed operation availability and no write methods are required.
-- [ ] Run AddIn tests and verify RED because production adapter/registry wiring is absent.
-- [ ] Implement `EplanReadAdapter` and wire one long-lived `ReadOperationService` into `OperationRegistry`.
-- [ ] Run AddIn tests and verify GREEN.
-- [ ] Run full CI and require non-zero counts for Contracts, LegacyHost spool and AddIn suites.
+- [x] Expand test-only EPLAN stubs and write adapter/registry tests first.
+- [x] Verify RED because production adapter is absent — CI `40308440298` failed only on missing `EplanReadAdapter` after Contracts **18/18** and spool **8/8**.
+- [x] Implement `EplanReadAdapter` and wire one long-lived `ReadOperationService` into `OperationRegistry`.
+- [x] Verify GREEN — CI `40308748325`: Contracts **18/18**, LegacyHost spool **8/8**, AddIn **31/31**, MCP build + guards success.
 
 ### Task 4: Add real-workstation Task 5 validation harness and project state
 
 **Files:**
-- Create: `scripts/test-task5-readonly.ps1`
-- Create/Modify: `docs/setup/task5-local-validation.md`
+- Create: `scripts/verify-task5-build.ps1`
+- Create: `scripts/test-task5-active-project.ps1`
+- Create: `docs/setup/task5-local-validation.md`
 - Modify: `docs/PROJECT_STATE.md`
 
 **Interfaces:**
-- Harness writes canonical UTF-8-no-BOM spool requests and invokes only fixed read operations.
-- It reports active-project/page/selection output and provides a selectable Function object-get path when a Function is selected.
+- Build probe compiles the production AddIn against the actual EPLAN 2.9.4 workstation assemblies.
+- Runtime probe writes canonical UTF-8-no-BOM `project.getActive` request and launches EPLAN with `/UseLastOpenedProjects:1` so a last-opened test project can be inspected.
+- Full multi-call page/selection/object runtime validation remains Task 6 because the session ID is intentionally bound to one live EPLAN/AddIn runtime and clean `/Auto` invocations create a new runtime each time.
 
-- [ ] Add script/docs after repo-side GREEN.
-- [ ] Verify script syntax and CI remains GREEN.
-- [ ] Record Task 5 repo-side evidence and exact real-workstation commands.
-- [ ] Open a stacked draft PR targeting `m0/task-4-dispatch`; do not merge.
+- [x] Add build/runtime scripts after repo-side GREEN.
+- [x] Add exact local validation documentation.
+- [x] Record Task 5 repo-side evidence and workstation commands in project state.
+- [x] Open stacked draft PR #15 targeting `m0/task-4-dispatch`; do not merge.
+- [ ] Real workstation: `scripts/verify-task5-build.ps1` PASS.
+- [ ] Real workstation: `scripts/test-task5-active-project.ps1` PASS.
+- [ ] Close Issue #12 only after both real-workstation checks pass.
 
 ## Self-review
 
 - Spec coverage: all Task 5 plan requirements map to Tasks 1–4.
 - Type consistency: session is `Guid`; database/type IDs are `uint`; object ID is `long`; string identifier is runtime-only string.
 - Security: adapter accepts no arbitrary property ID; registry accepts only fixed operation names; no writes introduced.
-- Real API risk: exact EPLAN members are deliberately isolated in `EplanReadAdapter` so workstation compilation can correct any 2.9.4 signature mismatch without changing service semantics.
+- Real API risk: exact EPLAN members are isolated in `EplanReadAdapter` so workstation compilation can correct any 2.9.4 signature mismatch without changing service semantics.
+- Runtime rule: never weaken session identity to make separate `/Auto` processes share a project session; Task 6 validates chained operations in one live EPLAN runtime.
