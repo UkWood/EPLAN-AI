@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,13 +22,17 @@ namespace Audeu.EplanAi.LegacyHost.Pipe
                 throw new ArgumentNullException(nameof(request));
             }
 
-            return WriteFrameAsync(stream, Serialize(request), MaxRequestBytes, cancellationToken);
+            return WriteFrameAsync(
+                stream,
+                Serialize(PipeBridgeRequest.FromContract(request)),
+                MaxRequestBytes,
+                cancellationToken);
         }
 
         public static async Task<BridgeRequest> ReadRequestAsync(Stream stream, CancellationToken cancellationToken)
         {
             byte[] payload = await ReadFrameAsync(stream, MaxRequestBytes, cancellationToken).ConfigureAwait(false);
-            return Deserialize<BridgeRequest>(payload);
+            return Deserialize<PipeBridgeRequest>(payload).ToContract();
         }
 
         public static Task WriteResponseAsync(Stream stream, BridgeResponse response, CancellationToken cancellationToken)
@@ -36,13 +42,17 @@ namespace Audeu.EplanAi.LegacyHost.Pipe
                 throw new ArgumentNullException(nameof(response));
             }
 
-            return WriteFrameAsync(stream, Serialize(response), MaxResponseBytes, cancellationToken);
+            return WriteFrameAsync(
+                stream,
+                Serialize(PipeBridgeResponse.FromContract(response)),
+                MaxResponseBytes,
+                cancellationToken);
         }
 
         public static async Task<BridgeResponse> ReadResponseAsync(Stream stream, CancellationToken cancellationToken)
         {
             byte[] payload = await ReadFrameAsync(stream, MaxResponseBytes, cancellationToken).ConfigureAwait(false);
-            return Deserialize<BridgeResponse>(payload);
+            return Deserialize<PipeBridgeResponse>(payload).ToContract();
         }
 
         private static async Task WriteFrameAsync(
@@ -128,7 +138,7 @@ namespace Audeu.EplanAi.LegacyHost.Pipe
         {
             using (var stream = new MemoryStream())
             {
-                new DataContractJsonSerializer(typeof(T)).WriteObject(stream, value);
+                CreateSerializer(typeof(T)).WriteObject(stream, value);
                 return stream.ToArray();
             }
         }
@@ -137,7 +147,118 @@ namespace Audeu.EplanAi.LegacyHost.Pipe
         {
             using (var stream = new MemoryStream(payload, writable: false))
             {
-                return (T)new DataContractJsonSerializer(typeof(T)).ReadObject(stream);
+                return (T)CreateSerializer(typeof(T)).ReadObject(stream);
+            }
+        }
+
+        private static DataContractJsonSerializer CreateSerializer(Type type)
+        {
+            return new DataContractJsonSerializer(
+                type,
+                new DataContractJsonSerializerSettings
+                {
+                    UseSimpleDictionaryFormat = true
+                });
+        }
+
+        [DataContract]
+        private sealed class PipeBridgeRequest
+        {
+            [DataMember(Name = "protocolVersion", Order = 1)]
+            public string ProtocolVersion { get; set; }
+
+            [DataMember(Name = "requestId", Order = 2)]
+            public Guid RequestId { get; set; }
+
+            [DataMember(Name = "operation", Order = 3)]
+            public string Operation { get; set; }
+
+            [DataMember(Name = "mode", Order = 4)]
+            public string Mode { get; set; }
+
+            [DataMember(Name = "projectSessionId", Order = 5, EmitDefaultValue = false)]
+            public Guid? ProjectSessionId { get; set; }
+
+            [DataMember(Name = "arguments", Order = 6)]
+            public Dictionary<string, string> Arguments { get; set; }
+
+            public static PipeBridgeRequest FromContract(BridgeRequest request)
+            {
+                return new PipeBridgeRequest
+                {
+                    ProtocolVersion = request.ProtocolVersion,
+                    RequestId = request.RequestId,
+                    Operation = request.Operation,
+                    Mode = request.Mode,
+                    ProjectSessionId = request.ProjectSessionId,
+                    Arguments = request.Arguments ?? new Dictionary<string, string>()
+                };
+            }
+
+            public BridgeRequest ToContract()
+            {
+                return new BridgeRequest
+                {
+                    ProtocolVersion = ProtocolVersion,
+                    RequestId = RequestId,
+                    Operation = Operation,
+                    Mode = Mode,
+                    ProjectSessionId = ProjectSessionId,
+                    Arguments = Arguments ?? new Dictionary<string, string>()
+                };
+            }
+        }
+
+        [DataContract]
+        private sealed class PipeBridgeResponse
+        {
+            [DataMember(Name = "protocolVersion", Order = 1)]
+            public string ProtocolVersion { get; set; }
+
+            [DataMember(Name = "requestId", Order = 2)]
+            public Guid RequestId { get; set; }
+
+            [DataMember(Name = "success", Order = 3)]
+            public bool Success { get; set; }
+
+            [DataMember(Name = "errorCode", Order = 4, EmitDefaultValue = false)]
+            public string ErrorCode { get; set; }
+
+            [DataMember(Name = "errorMessage", Order = 5, EmitDefaultValue = false)]
+            public string ErrorMessage { get; set; }
+
+            [DataMember(Name = "dataJson", Order = 6, EmitDefaultValue = false)]
+            public string DataJson { get; set; }
+
+            [DataMember(Name = "warnings", Order = 7)]
+            public string[] Warnings { get; set; }
+
+            public static PipeBridgeResponse FromContract(BridgeResponse response)
+            {
+                return new PipeBridgeResponse
+                {
+                    ProtocolVersion = response.ProtocolVersion,
+                    RequestId = response.RequestId,
+                    Success = response.Success,
+                    ErrorCode = response.ErrorCode,
+                    ErrorMessage = response.ErrorMessage,
+                    DataJson = response.DataJson,
+                    Warnings = response.Warnings ?? new string[0]
+                };
+            }
+
+            public BridgeResponse ToContract()
+            {
+                return new BridgeResponse
+                {
+                    ProtocolVersion = ProtocolVersion,
+                    RequestId = RequestId,
+                    Success = Success,
+                    ErrorCode = ErrorCode,
+                    ErrorMessage = ErrorMessage,
+                    DataJson = DataJson,
+                    Warnings = Warnings ?? new string[0]
+                };
             }
         }
     }
