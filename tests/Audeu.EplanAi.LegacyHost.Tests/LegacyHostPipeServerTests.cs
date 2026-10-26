@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
 using Audeu.EplanAi.Contracts;
@@ -88,7 +89,7 @@ namespace Audeu.EplanAi.LegacyHost.Tests
                 await executor.FirstEntered.Task;
 
                 Task secondTask = server.HandleClientAsync(second, CancellationToken.None);
-                await Task.Delay(100);
+                await Task.Delay(100, TestContext.Current.CancellationToken);
 
                 Assert.Equal(1, executor.StartedCount);
                 Assert.Equal(1, executor.MaxConcurrent);
@@ -117,6 +118,45 @@ namespace Audeu.EplanAi.LegacyHost.Tests
             }
 
             Assert.Empty(executor.Requests);
+        }
+
+        [Fact]
+        public async Task RunAsync_CurrentUserNamedPipeRoundTripAndCancellationStopsLoop()
+        {
+            var executor = new RecordingExecutor();
+            using (var server = new LegacyHostPipeServer(executor))
+            using (var cancellation = new CancellationTokenSource())
+            {
+                Task serverTask = server.RunAsync(cancellation.Token);
+                var request = Request("system.status");
+
+                using (var client = new NamedPipeClientStream(
+                    ".",
+                    PipeProtocol.PipeName,
+                    PipeDirection.InOut,
+                    PipeOptions.Asynchronous))
+                {
+                    client.Connect(5000);
+                    await PipeProtocol.WriteRequestAsync(
+                        client,
+                        request,
+                        TestContext.Current.CancellationToken);
+                    var response = await PipeProtocol.ReadResponseAsync(
+                        client,
+                        TestContext.Current.CancellationToken);
+
+                    Assert.True(response.Success);
+                    Assert.Equal(request.RequestId, response.RequestId);
+                }
+
+                cancellation.Cancel();
+                Task completed = await Task.WhenAny(
+                    serverTask,
+                    Task.Delay(5000, TestContext.Current.CancellationToken));
+                Assert.Same(serverTask, completed);
+                await serverTask;
+                Assert.Single(executor.Requests);
+            }
         }
 
         private static BridgeRequest Request(string operation)
