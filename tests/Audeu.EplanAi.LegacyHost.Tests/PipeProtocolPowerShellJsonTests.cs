@@ -15,15 +15,8 @@ namespace Audeu.EplanAi.LegacyHost.Tests
         {
             var requestId = Guid.Parse("bdbc4a96-896c-47a1-ab50-c5a38268e8e9");
             var json = "{\"protocolVersion\":\"1.0\",\"requestId\":\"bdbc4a96-896c-47a1-ab50-c5a38268e8e9\",\"operation\":\"system.status\",\"mode\":\"read\",\"arguments\":{}}";
-            var payload = new UTF8Encoding(false).GetBytes(json);
-            var frame = new byte[payload.Length + 4];
-            frame[0] = (byte)(payload.Length & 0xff);
-            frame[1] = (byte)((payload.Length >> 8) & 0xff);
-            frame[2] = (byte)((payload.Length >> 16) & 0xff);
-            frame[3] = (byte)((payload.Length >> 24) & 0xff);
-            Buffer.BlockCopy(payload, 0, frame, 4, payload.Length);
 
-            using (var stream = new MemoryStream(frame, writable: false))
+            using (var stream = Frame(json))
             {
                 var request = await PipeProtocol.ReadRequestAsync(stream, CancellationToken.None);
 
@@ -34,6 +27,39 @@ namespace Audeu.EplanAi.LegacyHost.Tests
                 Assert.NotNull(request.Arguments);
                 Assert.Empty(request.Arguments);
             }
+        }
+
+        [Fact]
+        public async Task ReadRequest_AcceptsCamelCaseProjectSessionAndSimpleDictionaryArguments()
+        {
+            var requestId = Guid.Parse("ec79ff52-7842-47e8-a53a-05a168fd8ca5");
+            var sessionId = Guid.Parse("21b58d12-1213-4876-aff1-fb62a4dcad5d");
+            var json = "{\"protocolVersion\":\"1.0\",\"requestId\":\"ec79ff52-7842-47e8-a53a-05a168fd8ca5\",\"operation\":\"object.get\",\"mode\":\"read\",\"projectSessionId\":\"21b58d12-1213-4876-aff1-fb62a4dcad5d\",\"arguments\":{\"databaseIdentifier\":\"25\",\"typeIdentifier\":\"17\",\"objectIdentifier\":\"16910\",\"stringIdentifier\":\"25/17/16910/0\"}}";
+
+            using (var stream = Frame(json))
+            {
+                var request = await PipeProtocol.ReadRequestAsync(stream, CancellationToken.None);
+
+                Assert.Equal(requestId, request.RequestId);
+                Assert.Equal(sessionId, request.ProjectSessionId);
+                Assert.Equal("object.get", request.Operation);
+                Assert.Equal("25", request.Arguments["databaseIdentifier"]);
+                Assert.Equal("17", request.Arguments["typeIdentifier"]);
+                Assert.Equal("16910", request.Arguments["objectIdentifier"]);
+                Assert.Equal("25/17/16910/0", request.Arguments["stringIdentifier"]);
+            }
+        }
+
+        private static MemoryStream Frame(string json)
+        {
+            var payload = new UTF8Encoding(false).GetBytes(json);
+            var frame = new byte[payload.Length + 4];
+            frame[0] = (byte)(payload.Length & 0xff);
+            frame[1] = (byte)((payload.Length >> 8) & 0xff);
+            frame[2] = (byte)((payload.Length >> 16) & 0xff);
+            frame[3] = (byte)((payload.Length >> 24) & 0xff);
+            Buffer.BlockCopy(payload, 0, frame, 4, payload.Length);
+            return new MemoryStream(frame, writable: false);
         }
     }
 }
