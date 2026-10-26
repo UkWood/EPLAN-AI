@@ -23,8 +23,15 @@ $requestDir = Join-Path $root 'requests'
 $responseDir = Join-Path $root 'responses'
 $diagnosticsDir = Join-Path $root 'diagnostics'
 $lifecycleLog = Join-Path $diagnosticsDir 'addin-lifecycle.log'
+$actionLog = Join-Path $diagnosticsDir 'dispatch-action.log'
 New-Item -ItemType Directory -Force -Path $requestDir | Out-Null
 New-Item -ItemType Directory -Force -Path $responseDir | Out-Null
+New-Item -ItemType Directory -Force -Path $diagnosticsDir | Out-Null
+foreach ($logPath in @($lifecycleLog, $actionLog)) {
+    if (Test-Path $logPath) {
+        Remove-Item -Force $logPath
+    }
+}
 
 $requestPath = Join-Path $requestDir ($requestId.ToString('D') + '.request.json')
 $responsePath = Join-Path $responseDir ($requestId.ToString('D') + '.response.json')
@@ -60,12 +67,17 @@ while ((Get-Date) -lt $deadline -and -not (Test-Path $responsePath)) {
 if (-not (Test-Path $responsePath)) {
     $processState = if ($process.HasExited) { "EPLAN exited with code $($process.ExitCode)" } else { 'EPLAN process is still running' }
     $lifecycleText = if (Test-Path $lifecycleLog) {
-        (Get-Content -Path $lifecycleLog | Select-Object -Last 10) -join [Environment]::NewLine
+        (Get-Content -Path $lifecycleLog | Select-Object -Last 20) -join [Environment]::NewLine
     } else {
         '<no add-in lifecycle log>'
     }
+    $actionText = if (Test-Path $actionLog) {
+        (Get-Content -Path $actionLog | Select-Object -Last 30) -join [Environment]::NewLine
+    } else {
+        '<no dispatch action log>'
+    }
 
-    throw "No response was produced within $TimeoutSeconds seconds. $processState. Request: $requestPath`nLifecycle:`n$lifecycleText"
+    throw "No response was produced within $TimeoutSeconds seconds. $processState. Request: $requestPath`nAddIn lifecycle:`n$lifecycleText`nDispatch action:`n$actionText"
 }
 
 $response = Get-Content -Raw -Path $responsePath | ConvertFrom-Json
@@ -80,3 +92,7 @@ if ($response.DataJson -notmatch '"status":"ready"') {
 }
 
 Write-Host "PASS: AudeuAiDispatch system.status round-trip succeeded for $requestId"
+if (Test-Path $actionLog) {
+    Write-Host 'Dispatch action diagnostics:'
+    Get-Content -Path $actionLog | ForEach-Object { Write-Host "  $_" }
+}
