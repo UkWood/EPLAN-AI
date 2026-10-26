@@ -8,7 +8,7 @@ using Audeu.EplanAi.LegacyHost.Spool;
 
 namespace Audeu.EplanAi.LegacyHost.Remote
 {
-    public sealed class RemoteGateway
+    public sealed class RemoteGateway : IRemoteGatewayLifecycle
     {
         private const string FixedActionName = "AudeuAiDispatch";
 
