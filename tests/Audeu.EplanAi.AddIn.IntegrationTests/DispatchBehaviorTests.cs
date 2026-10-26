@@ -85,6 +85,20 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
         }
 
         [Fact]
+        public void Execute_ValidRequestIdWhenProcessingThrows_WritesDiagnosticResponse()
+        {
+            var requestId = Guid.NewGuid();
+
+            Assert.True(CreateAction().Execute(ContextFor(requestId)));
+
+            var response = ReadResponse(requestId);
+            Assert.False(response.Success);
+            Assert.Equal("INTERNAL_ERROR", response.ErrorCode);
+            Assert.Equal(requestId, response.RequestId);
+            Assert.False(string.IsNullOrWhiteSpace(response.ErrorMessage));
+        }
+
+        [Fact]
         public void Dispatcher_RejectsProtocolMismatchBeforeOperationExecution()
         {
             var request = NewRequest("system.status");
