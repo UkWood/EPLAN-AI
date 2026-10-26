@@ -44,7 +44,9 @@ $request = [ordered]@{
     ProjectSessionId = $null
     Arguments = @{}
 }
-$request | ConvertTo-Json -Compress | Set-Content -Path $requestPath -Encoding UTF8
+$requestJson = $request | ConvertTo-Json -Compress
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($requestPath, $requestJson, $utf8NoBom)
 
 $arguments = @(
     '/Variant:"Electric P8"',
@@ -80,7 +82,8 @@ if (-not (Test-Path $responsePath)) {
     throw "No response was produced within $TimeoutSeconds seconds. $processState. Request: $requestPath`nAddIn lifecycle:`n$lifecycleText`nDispatch action:`n$actionText"
 }
 
-$response = Get-Content -Raw -Path $responsePath | ConvertFrom-Json
+$responseJson = [System.IO.File]::ReadAllText($responsePath, [System.Text.Encoding]::UTF8)
+$response = $responseJson | ConvertFrom-Json
 if ([string]$response.RequestId -ne $requestId.ToString()) {
     throw "Response request ID mismatch. Expected $requestId, got $($response.RequestId)."
 }
