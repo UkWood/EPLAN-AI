@@ -30,7 +30,7 @@ function Assert-NoPattern {
         $content = Get-Content -Path $file.FullName -Raw
         foreach ($pattern in $Patterns) {
             if ($content -match $pattern) {
-                throw "$ErrorCode: $Description detected in $($file.FullName). Matched pattern: $pattern"
+                throw "${ErrorCode}: $Description detected in $($file.FullName). Matched pattern: $pattern"
             }
         }
     }
