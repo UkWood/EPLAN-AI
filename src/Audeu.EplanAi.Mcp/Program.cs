@@ -26,10 +26,12 @@ internal static class Program
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<ChangePlanStore>();
         builder.Services.AddSingleton<FunctionTextChangePlanner>();
+        builder.Services.AddSingleton<ChangePlanApplyService>();
         builder.Services
             .AddMcpServer()
             .WithStdioServerTransport()
-            .WithTools<EplanReadTools>();
+            .WithTools<EplanReadTools>()
+            .WithTools<EplanWriteTools>();
 
         return builder;
     }
