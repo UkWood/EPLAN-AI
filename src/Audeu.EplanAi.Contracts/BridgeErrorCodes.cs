@@ -13,7 +13,9 @@ namespace Audeu.EplanAi.Contracts
         public const string ObjectInvalid = "OBJECT_INVALID";
         public const string ObjectTypeNotAllowed = "OBJECT_TYPE_NOT_ALLOWED";
         public const string ValidationFailed = "VALIDATION_FAILED";
+        public const string PlanNotFound = "PLAN_NOT_FOUND";
         public const string PlanAlreadyApplied = "PLAN_ALREADY_APPLIED";
+        public const string PlanStale = "PLAN_STALE";
         public const string BridgeUnknownOperation = "BRIDGE_UNKNOWN_OPERATION";
         public const string InternalError = "INTERNAL_ERROR";
     }
