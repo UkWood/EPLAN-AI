@@ -194,5 +194,9 @@ namespace Eplan.EplApi.HEServices
 
             return value == null ? null : value.StubDisplayString;
         }
+
+        public void Dispose()
+        {
+        }
     }
 }
