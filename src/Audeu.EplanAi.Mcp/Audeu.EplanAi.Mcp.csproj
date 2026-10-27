@@ -11,5 +11,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Audeu.EplanAi.Contracts\Audeu.EplanAi.Contracts.csproj" />
     <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
 </Project>
