@@ -43,8 +43,41 @@ namespace Eplan.EplApi.ApplicationFramework
     }
 }
 
+namespace Eplan.EplApi.Base
+{
+    public sealed class MultiLangString
+    {
+        public MultiLangString(string internalString)
+        {
+            InternalString = internalString;
+        }
+
+        public string InternalString { get; }
+
+        public string StubDisplayString
+        {
+            get
+            {
+                const string languageIndependentPrefix = "??_??@";
+                if (!string.IsNullOrEmpty(InternalString) &&
+                    InternalString.StartsWith(languageIndependentPrefix, StringComparison.Ordinal) &&
+                    InternalString.EndsWith(";", StringComparison.Ordinal))
+                {
+                    return InternalString.Substring(
+                        languageIndependentPrefix.Length,
+                        InternalString.Length - languageIndependentPrefix.Length - 1);
+                }
+
+                return InternalString;
+            }
+        }
+    }
+}
+
 namespace Eplan.EplApi.DataModel
 {
+    using Eplan.EplApi.Base;
+
     public class PropertyValue
     {
         public PropertyValue()
@@ -57,6 +90,11 @@ namespace Eplan.EplApi.DataModel
         }
 
         public string Value { get; set; }
+
+        public MultiLangString ToMultiLangString()
+        {
+            return new MultiLangString(Value);
+        }
 
         public override string ToString()
         {
@@ -126,6 +164,7 @@ namespace Eplan.EplApi.DataModel
 
 namespace Eplan.EplApi.HEServices
 {
+    using Eplan.EplApi.Base;
     using Eplan.EplApi.DataModel;
 
     public class SelectionSet
@@ -141,6 +180,19 @@ namespace Eplan.EplApi.HEServices
         public Project GetCurrentProject(bool useSelectionDialog)
         {
             return StubCurrentProject;
+        }
+    }
+
+    public sealed class Translate
+    {
+        public string GetStringToDisplayInDialogs(Project project, MultiLangString value)
+        {
+            if (project == null)
+            {
+                throw new ArgumentNullException(nameof(project));
+            }
+
+            return value == null ? null : value.StubDisplayString;
         }
     }
 }
