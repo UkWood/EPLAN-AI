@@ -251,7 +251,7 @@ public sealed class EplanWriteToolsTests
     {
         private readonly Func<BridgeRequest, BridgeResponse> _responseFactory;
 
-        public RecordingBridge(Func<BridgeRequest, BridgeResponse>? responseFactory = null)
+        public RecordingBridge(Func<BridgeRequest, BridgeResponse> responseFactory = null)
         {
             _responseFactory = responseFactory ?? (request => Success(request, "{}"));
         }
