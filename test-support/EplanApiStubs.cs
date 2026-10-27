@@ -45,14 +45,18 @@ namespace Eplan.EplApi.ApplicationFramework
 
 namespace Eplan.EplApi.Base
 {
-    public sealed class MultiLangString
+    public sealed class MultiLangString : IDisposable
     {
+        public MultiLangString()
+        {
+        }
+
         public MultiLangString(string internalString)
         {
             InternalString = internalString;
         }
 
-        public string InternalString { get; }
+        public string InternalString { get; private set; }
 
         public string StubDisplayString
         {
@@ -71,12 +75,53 @@ namespace Eplan.EplApi.Base
                 return InternalString;
             }
         }
+
+        public void SetAsString(string value)
+        {
+            if (value == null)
+            {
+                InternalString = null;
+                return;
+            }
+
+            InternalString = value.StartsWith("??_??@", StringComparison.Ordinal)
+                ? value
+                : "??_??@" + value + ";";
+        }
+
+        public void Dispose()
+        {
+        }
     }
 }
 
 namespace Eplan.EplApi.DataModel
 {
     using Eplan.EplApi.Base;
+
+    public static class StubWriteTrace
+    {
+        private static readonly List<string> s_events = new List<string>();
+
+        public static IList<string> Events
+        {
+            get { return s_events.AsReadOnly(); }
+        }
+
+        public static bool TransactionImplicitCommit { get; set; }
+
+        public static void Add(string value)
+        {
+            s_events.Add(value);
+        }
+
+        public static void Reset()
+        {
+            s_events.Clear();
+            TransactionImplicitCommit = false;
+            SafetyPoint.StubReset();
+        }
+    }
 
     public class PropertyValue
     {
@@ -94,6 +139,19 @@ namespace Eplan.EplApi.DataModel
         public MultiLangString ToMultiLangString()
         {
             return new MultiLangString(Value);
+        }
+
+        public PropertyValue Set(MultiLangString value)
+        {
+            SafetyPoint.StubRecord(this, Value);
+            Value = value == null ? null : value.InternalString;
+            StubWriteTrace.Add("property.set");
+            return this;
+        }
+
+        internal void StubRestore(string value)
+        {
+            Value = value;
         }
 
         public override string ToString()
@@ -116,6 +174,7 @@ namespace Eplan.EplApi.DataModel
         public uint TypeIdentifier { get; set; }
         public long ObjectIdentifier { get; set; }
         public bool IsValid { get; set; } = true;
+        public bool IsReadOnly { get; set; }
         public Project Project { get; set; }
         public string StubTypeName { get; set; }
         public string StubStringIdentifier { get; set; }
@@ -140,7 +199,6 @@ namespace Eplan.EplApi.DataModel
     {
         public string ProjectName { get; set; }
         public string ProjectFullName { get; set; }
-        public bool IsReadOnly { get; set; }
         public Page[] Pages { get; set; } = new Page[0];
     }
 
@@ -159,6 +217,135 @@ namespace Eplan.EplApi.DataModel
     {
         public string Name { get; set; }
         public FunctionPropertyList Properties { get; } = new FunctionPropertyList();
+    }
+
+    public sealed class SafetyPoint : IDisposable
+    {
+        private static SafetyPoint s_current;
+        private readonly Dictionary<PropertyValue, string> _originalValues =
+            new Dictionary<PropertyValue, string>();
+        private bool _committed;
+        private bool _disposed;
+
+        private SafetyPoint()
+        {
+        }
+
+        public static SafetyPoint Create()
+        {
+            var point = new SafetyPoint();
+            s_current = point;
+            StubWriteTrace.Add("safety.create");
+            return point;
+        }
+
+        internal static void StubRecord(PropertyValue property, string oldValue)
+        {
+            if (s_current != null && !s_current._originalValues.ContainsKey(property))
+            {
+                s_current._originalValues.Add(property, oldValue);
+            }
+        }
+
+        internal static void StubReset()
+        {
+            s_current = null;
+        }
+
+        public void Commit()
+        {
+            _committed = true;
+            StubWriteTrace.Add("safety.commit");
+        }
+
+        public void Rollback()
+        {
+            Restore();
+            StubWriteTrace.Add("safety.rollback");
+        }
+
+        public void Start()
+        {
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (!_committed)
+            {
+                Restore();
+                StubWriteTrace.Add("safety.rollback");
+            }
+
+            if (ReferenceEquals(s_current, this))
+            {
+                s_current = null;
+            }
+
+            _disposed = true;
+            StubWriteTrace.Add("safety.dispose");
+        }
+
+        private void Restore()
+        {
+            foreach (KeyValuePair<PropertyValue, string> entry in _originalValues)
+            {
+                entry.Key.StubRestore(entry.Value);
+            }
+        }
+    }
+
+    public sealed class Transaction : IDisposable
+    {
+        public bool IsImplicitEplanTransactionCommited
+        {
+            get { return StubWriteTrace.TransactionImplicitCommit; }
+        }
+
+        public void Commit()
+        {
+            StubWriteTrace.Add("transaction.commit");
+        }
+
+        public void Abort()
+        {
+            StubWriteTrace.Add("transaction.abort");
+        }
+
+        public void Dispose()
+        {
+            StubWriteTrace.Add("transaction.dispose");
+        }
+    }
+
+    public class TransactionManager
+    {
+        public Transaction CreateTransaction()
+        {
+            StubWriteTrace.Add("transaction.create");
+            return new Transaction();
+        }
+    }
+
+    public sealed class UndoStep : IDisposable
+    {
+        public void Dispose()
+        {
+            StubWriteTrace.Add("undo.dispose");
+        }
+    }
+
+    public class UndoManager
+    {
+        public UndoStep CreateUndoStep()
+        {
+            StubWriteTrace.Add("undo.create");
+            return new UndoStep();
+        }
     }
 }
 

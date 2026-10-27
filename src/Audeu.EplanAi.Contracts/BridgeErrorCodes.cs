@@ -12,6 +12,7 @@ namespace Audeu.EplanAi.Contracts
         public const string ObjectNotFound = "OBJECT_NOT_FOUND";
         public const string ObjectInvalid = "OBJECT_INVALID";
         public const string ObjectTypeNotAllowed = "OBJECT_TYPE_NOT_ALLOWED";
+        public const string ReadOnlyProject = "READ_ONLY_PROJECT";
         public const string ValidationFailed = "VALIDATION_FAILED";
         public const string PlanNotFound = "PLAN_NOT_FOUND";
         public const string PlanAlreadyApplied = "PLAN_ALREADY_APPLIED";
