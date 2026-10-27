@@ -38,8 +38,46 @@ public sealed class ChangePlanTests
     {
         Assert.Equal("PROTOCOL_MISMATCH", BridgeErrorCodes.ProtocolMismatch);
         Assert.Equal("SESSION_STALE", BridgeErrorCodes.SessionStale);
+        Assert.Equal("PLAN_NOT_FOUND", BridgeErrorCodes.PlanNotFound);
         Assert.Equal("PLAN_ALREADY_APPLIED", BridgeErrorCodes.PlanAlreadyApplied);
+        Assert.Equal("PLAN_STALE", BridgeErrorCodes.PlanStale);
         Assert.Equal("BRIDGE_UNKNOWN_OPERATION", BridgeErrorCodes.BridgeUnknownOperation);
+    }
+
+    [Fact]
+    public void ChangeOperation_SnapshotsTargetAtConstruction()
+    {
+        var target = CreateReference();
+        var expectedSession = target.ProjectSessionId;
+        var operation = new ChangeOperation("setFunctionText", target, "Old", "New");
+
+        target.ProjectSessionId = Guid.NewGuid();
+        target.DatabaseIdentifier = 99u;
+        target.TypeIdentifier = 88u;
+        target.ObjectIdentifier = 7777L;
+        target.StringIdentifier = "mutated";
+
+        var stored = operation.Target;
+        Assert.Equal(expectedSession, stored.ProjectSessionId);
+        Assert.Equal(7u, stored.DatabaseIdentifier);
+        Assert.Equal(27u, stored.TypeIdentifier);
+        Assert.Equal(1482L, stored.ObjectIdentifier);
+        Assert.Equal("function:1482", stored.StringIdentifier);
+    }
+
+    [Fact]
+    public void ChangeOperation_TargetGetterReturnsDefensiveCopy()
+    {
+        var operation = new ChangeOperation("setFunctionText", CreateReference(), "Old", "New");
+
+        var first = operation.Target;
+        first.DatabaseIdentifier = 999u;
+        first.StringIdentifier = "mutated";
+
+        var second = operation.Target;
+        Assert.NotSame(first, second);
+        Assert.Equal(7u, second.DatabaseIdentifier);
+        Assert.Equal("function:1482", second.StringIdentifier);
     }
 
     [Fact]
