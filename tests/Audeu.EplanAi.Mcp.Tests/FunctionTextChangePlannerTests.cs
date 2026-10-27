@@ -169,6 +169,42 @@ public sealed class FunctionTextChangePlannerTests
         Assert.Equal("===+++УСПД_Э3#-A1", stored.StringIdentifier);
     }
 
+    [Fact]
+    public async Task Preview_SnapshotsTargetBeforeAwaitedReadCompletes()
+    {
+        var bridge = new DeferredBridgeClient();
+        var store = new ChangePlanStore();
+        var planner = new FunctionTextChangePlanner(bridge, store, TimeProvider.System);
+        ObjectReference target = CreateTarget();
+        Guid originalSession = target.ProjectSessionId;
+
+        Task<ChangePlan> preview = planner.PreviewAsync(target, "New", CancellationToken.None);
+        BridgeRequest request = await bridge.RequestReceived.WaitAsync(TimeSpan.FromSeconds(5));
+
+        target.ProjectSessionId = Guid.NewGuid();
+        target.DatabaseIdentifier = 999;
+        target.TypeIdentifier = 888;
+        target.ObjectIdentifier = 777;
+        target.StringIdentifier = "mutated-during-read";
+
+        bridge.Complete(request, "{\"kind\":\"Function\",\"functionText\":\"Old\"}");
+        ChangePlan plan = await preview;
+
+        Assert.Equal(originalSession, request.ProjectSessionId);
+        Assert.Equal("25", request.Arguments["databaseIdentifier"]);
+        Assert.Equal("177", request.Arguments["typeIdentifier"]);
+        Assert.Equal("123456789", request.Arguments["objectIdentifier"]);
+        Assert.Equal("===+++УСПД_Э3#-A1", request.Arguments["stringIdentifier"]);
+
+        ObjectReference stored = Assert.Single(plan.Operations).Target;
+        Assert.Equal(originalSession, plan.ProjectSessionId);
+        Assert.Equal(originalSession, stored.ProjectSessionId);
+        Assert.Equal(25u, stored.DatabaseIdentifier);
+        Assert.Equal(177u, stored.TypeIdentifier);
+        Assert.Equal(123456789L, stored.ObjectIdentifier);
+        Assert.Equal("===+++УСПД_Э3#-A1", stored.StringIdentifier);
+    }
+
     private static FunctionTextChangePlanner CreatePlanner(RecordingBridgeClient bridge)
     {
         return new FunctionTextChangePlanner(bridge, new ChangePlanStore(), TimeProvider.System);
@@ -210,6 +246,33 @@ public sealed class FunctionTextChangePlannerTests
                 RequestId = request.RequestId,
                 Success = true,
                 DataJson = _dataJson
+            });
+        }
+    }
+
+    private sealed class DeferredBridgeClient : IBridgeClient
+    {
+        private readonly TaskCompletionSource<BridgeRequest> _requestReceived =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<BridgeResponse> _response =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<BridgeRequest> RequestReceived => _requestReceived.Task;
+
+        public Task<BridgeResponse> SendAsync(BridgeRequest request, CancellationToken cancellationToken)
+        {
+            _requestReceived.TrySetResult(request);
+            return _response.Task;
+        }
+
+        public void Complete(BridgeRequest request, string dataJson)
+        {
+            _response.TrySetResult(new BridgeResponse
+            {
+                ProtocolVersion = ProtocolConstants.Version,
+                RequestId = request.RequestId,
+                Success = true,
+                DataJson = dataJson
             });
         }
     }
