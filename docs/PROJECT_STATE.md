@@ -47,6 +47,8 @@ The LLM never receives unrestricted EPLAN API access. MCP exposes a closed-world
 - `docs/setup/task9-gate-b-validation.md`
 - `docs/superpowers/specs/2026-10-27-task-10-change-plan-design.md`
 - `docs/superpowers/plans/2026-10-27-task-10-change-plan.md`
+- `docs/superpowers/specs/2026-10-27-task-11-safe-function-text-design.md`
+- `docs/superpowers/plans/2026-10-27-task-11-safe-function-text.md`
 
 ## Verified target workstation
 
@@ -77,8 +79,9 @@ Confirmed through real build/runtime evidence on 2026-10-26 and 2026-10-27:
 - **Tasks 1–9 / M0 read-only bridge:** **PASS and integrated to `main`**.
 - **Task 8 MCP implementation:** merged via PR #21 at `7c84ccfeda6f4ae689375ebdab21486b37b88d2c`; main CI #303 PASS.
 - **Gate B / Task 9 workstation acceptance:** **PASS** on real EPLAN 2.9.4; Issue #22 completed; merged via PR #23 at `fec3eb06708ef4f6906b1daa10d0222b056bd0d1`; main CI #304 and PowerShell Encoding Guard #31 PASS.
-- **Task 10 MCP Change Plan lifecycle:** **REPO-SIDE PASS** on `m1/task-10-change-plans`; PR #25 remains unmerged pending explicit approval.
-- **Gate C / M1 safe write:** IN PROGRESS. Task 10 establishes immutable preview state only; no EPLAN mutation or mutating MCP tool exists yet.
+- **Task 10 MCP Change Plan lifecycle:** **REPO-SIDE PASS** on `m1/task-10-change-plans`; PR #25 is ready but remains unmerged pending explicit approval.
+- **Task 11 internal safe Function Text write path:** **REPO-SIDE PASS** on `m1/task-11-safe-function-text`; PR #27 remains unmerged pending explicit approval.
+- **Gate C / M1 safe write:** IN PROGRESS. The immutable preview lifecycle and internal AddIn write/undo boundary are implemented and repo-tested, but no mutating MCP tool has been exposed and no real workstation mutation acceptance has been performed yet.
 
 ## Current status
 
@@ -92,8 +95,8 @@ Confirmed through real build/runtime evidence on 2026-10-26 and 2026-10-27:
 - [x] Task 8: .NET 8 stdio MCP read-only tools — merged to `main` via PR #21.
 - [x] Task 9 / Gate B: real MCP-to-EPLAN read-only acceptance including stale-session behavior — PASS and merged to `main` via PR #23.
 - [x] Task 10: immutable MCP Change Plan state machine for `setFunctionText` — repo-side complete on branch `m1/task-10-change-plans`, PR #25.
-- [ ] Task 11: safe Function Text preview/apply in EPLAN.
-- [ ] Task 12 / Gate C: MCP apply/undo and M1 acceptance.
+- [x] Task 11: internal safe Function Text apply/undo path in AddIn/EPLAN boundary — repo-side complete on branch `m1/task-11-safe-function-text`, PR #27; no real workstation mutation performed.
+- [ ] Task 12 / Gate C: MCP preview/apply/undo tools and real M1 acceptance on a disposable/safe EPLAN project.
 - [ ] Task 13 / Gate D: final verification and v0.1 packaging.
 
 Tasks 1–7 were integrated to `main` at merge commit `1064c841d0b33f29b649b03c7dd902fd3f4a7bbd`; main CI #239 (`40360507085`) passed after integration.
@@ -112,6 +115,8 @@ Task 8 initially exposed a zero-discovery MCP test configuration. That green-loo
 Task 9 later added a dedicated MCP probe regression suite. Final Task 9 runs execute and pass **6/6 MCP probe tests** in addition to the existing suites. Final merged `main` CI #304 passed the full repository pipeline.
 
 Task 10 expands the MCP suite to **38/38 PASS** while preserving non-zero discovery and the existing Gate-B probe suite at **6/6 PASS**. CI #317 also passed Contracts **20/20**, LegacyHost **45/45**, AddIn **32/32**, MCP build, probe build, PowerShell 5.1 parsing and both EPLAN prerequisite guards.
+
+Task 11 expands the AddIn integration suite to **60/60 PASS** while leaving the MCP suite at **38/38 PASS** and the Gate-B probe regressions at **6/6 PASS**. Final code CI #332 also passed Contracts **20/20**, LegacyHost **45/45**, MCP/probe builds, PowerShell 5.1 parsing and both EPLAN prerequisite guards; PowerShell Encoding Guard #59 passed on the same code head.
 
 ## Task 4 — fixed AddIn dispatch — PASS
 
@@ -268,7 +273,7 @@ Final merged verification:
 
 ## Task 10 — immutable MCP Change Plan lifecycle — REPO-SIDE PASS
 
-Canonical issue: #24. Branch: `m1/task-10-change-plans`. PR: #25 (draft until final verification is recorded).
+Canonical issue: #24. Branch: `m1/task-10-change-plans`. PR: #25 (ready for review; unmerged pending explicit approval).
 
 Task 10 introduces no EPLAN write path and no new MCP tool. Its purpose is to make a future write single-use, session-bound and based on an immutable preview.
 
@@ -294,16 +299,60 @@ Task 10 TDD evidence:
 - planner GREEN: CI #314;
 - DI-composition RED: CI #315; 37/38 MCP tests passed and the newly added unregistered-service test failed;
 - final implementation GREEN: CI #317 — Contracts **20/20**, LegacyHost **45/45**, AddIn **32/32**, MCP **38/38**, MCP probe **6/6**, MCP/probe builds and prerequisite guards PASS;
-- PowerShell Encoding Guard #44 PASS.
+- final documentation head `4abf2e074b1b7e991eba2db902e83c250f821314`: CI #318 SUCCESS and PowerShell Encoding Guard #45 SUCCESS.
 
-Safety boundary after Task 10: **there is still no `change.apply`, no EPLAN Transaction/SafetyPoint/Undo code, and no mutating MCP tool.** Actual mutation belongs to Task 11 and must remain constrained to the approved Function Text flow.
+Safety boundary at the end of Task 10: there was still no EPLAN write path and no mutating MCP tool. Task 11 adds only the approved internal AddIn write boundary; the MCP surface remains read-only until Task 12.
+
+## Task 11 — internal safe Function Text write path — REPO-SIDE PASS
+
+Canonical issue: #26. Branch: `m1/task-11-safe-function-text`. PR: #27 (stacked on Task 10; unmerged pending explicit approval).
+
+Task 11 implements the internal bridge mutation boundary for the single approved v0.1 write: applying and reversing a previewed `setFunctionText` operation. It does **not** expose a model-callable write MCP tool and it performs **no real workstation mutation** during repo-side completion.
+
+Fixed internal bridge operations:
+
+- `change.apply`;
+- `change.undoLast`.
+
+Safety and state guarantees:
+
+- read and write services share one long-lived `ProjectSessionTracker` in the default AddIn registry;
+- write requests require `Mode = write` and a current project session;
+- project or Function read-only state returns stable `READ_ONLY_PROJECT` before mutation;
+- `change.apply` accepts exactly the fixed Change Plan payload; no caller-controlled property name/ID, EPLAN action or arbitrary write operation is accepted;
+- `changePlanId` is atomically claimed before adapter mutation and remains single-use even after a safe failure, so ambiguous retries require a fresh preview;
+- target resolution rechecks active project, database/type/object/string identity, validity and Function type;
+- displayed `FUNC_TEXT` is re-read through the same `Translate.GetStringToDisplayInDialogs(...)` boundary as read operations and must exactly equal the previewed old value; mismatch returns `PLAN_STALE` without mutation;
+- the only mutated property is Function `FUNC_TEXT`, built through `MultiLangString.SetAsString(newValue)`;
+- persistent changes are bounded by `UndoStep`, `SafetyPoint` and `Transaction`;
+- displayed text is read back and must exactly equal the requested new value before commits;
+- `Transaction.IsImplicitEplanTransactionCommited` is checked and any uncertain atomicity fails closed;
+- success commits Transaction before SafetyPoint;
+- exception or verification failure before commit leaves SafetyPoint uncommitted so stubbed rollback tests restore the original value;
+- bridge-level `change.undoLast` stores one session-bound last-change snapshot and performs a guarded reverse write; it does not keep a historical disposable `UndoStep` alive across calls;
+- arbitrary operations such as `eplan.setProperty` remain rejected with `BRIDGE_UNKNOWN_OPERATION`;
+- MCP host composition is unchanged and still registers only `.WithTools<EplanReadTools>()`, preserving exactly five model-callable read-only tools.
+
+Task 11 TDD evidence:
+
+- write-service RED: CI #320; Contracts **20/20** and LegacyHost **45/45** passed, AddIn failed only because the new WriteModel types did not yet exist;
+- service-policy GREEN: CI #325 SUCCESS;
+- fixed-registry/shared-session RED: CI #326; failed only because the two-service `OperationRegistry` constructor was not yet implemented;
+- registry/shared-session GREEN: CI #327 SUCCESS;
+- transactional-adapter RED: CI #329; failed only because `EplanWriteAdapter` / `IWriteExecutionHook` were not yet implemented;
+- adapter GREEN: CI #330 AddIn step PASS after implementation of target validation, old-value guard, UndoStep/SafetyPoint/Transaction, language-independent write, read-back verification and rollback test seam;
+- default-dispatch RED: CI #331 — AddIn **58/60 PASS**, with exactly the two new fixed-write dispatch tests failing because `change.apply` / `change.undoLast` still returned `BRIDGE_UNKNOWN_OPERATION`;
+- final code GREEN at `4280b0af55ad22d6db546a23f6154bbdad742ef4`: CI #332 SUCCESS — Contracts **20/20**, LegacyHost **45/45**, AddIn **60/60**, MCP **38/38**, MCP probe **6/6**, MCP/probe builds, PowerShell 5.1 validation and both EPLAN prerequisite guards PASS;
+- PowerShell Encoding Guard #59 SUCCESS on the same code head.
+
+Task 11 boundary: repository tests prove the closed internal write/rollback path with EPLAN-shaped API stubs only. Real EPLAN 2.9.4 mutation, verification and rollback evidence deliberately remains Task 12 / Gate C work and must use a disposable/safe project.
 
 ## Immediate next actions
 
-1. Finalize PR #25 as ready for review; do not merge without explicit user approval.
-2. Begin Task 11 on a stacked branch only after Task 10 is stable: implement the internal safe Function Text apply path in AddIn/EPLAN using session validation, exact old-value validation, UndoStep, SafetyPoint, Transaction, write, read-back verification and rollback-on-failure.
-3. Do not expose Task 11 as a model-callable mutating MCP tool yet; Task 12 owns the MCP preview/apply/undo surface and Gate C workstation acceptance.
-4. Keep all write validation on a disposable/safe EPLAN test project until Gate C passes.
+1. Finalize PR #27 as ready for review after the documentation-only final head passes CI; do not merge PR #27 or its Task 10 base PR #25 without explicit user approval.
+2. Begin Task 12 as a separate stacked increment: expose the approved MCP preview/apply/undo tools while preserving closed-world arguments and Change Plan single-use semantics.
+3. Execute Gate C only on a disposable/safe EPLAN project: preview -> prove unchanged -> apply -> verify -> undo -> verify original -> injected failure -> verify rollback.
+4. Keep all production/project work untouched until Gate C has passed; no mutation testing on a production EPLAN project.
 5. Preserve the closed-world rule: no arbitrary EPLAN property IDs, action names, paths, code or unrestricted DataModel access may become model-controlled.
 
 ## Release 0.1 boundaries
