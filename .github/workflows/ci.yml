@@ -42,6 +42,22 @@ jobs:
           }
           Write-Host 'All workstation PowerShell scripts parse under Windows PowerShell 5.1.'
 
+      - name: Test Task 13 package layout contract
+        shell: powershell
+        run: .\scripts\test-task13-package-layout.ps1
+
+      - name: Test Task 13 security verifier contract
+        shell: powershell
+        run: .\scripts\test-task13-security-verifier.ps1
+
+      - name: Verify Gate D security boundary
+        shell: powershell
+        run: .\scripts\verify-task13-security.ps1
+
+      - name: Test Task 13 release builder guards
+        shell: powershell
+        run: .\scripts\test-task13-release-guards.ps1
+
       - name: Restore and build Contracts
         shell: pwsh
         run: |
