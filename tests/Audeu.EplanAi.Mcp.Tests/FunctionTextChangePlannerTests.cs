@@ -177,9 +177,10 @@ public sealed class FunctionTextChangePlannerTests
         var planner = new FunctionTextChangePlanner(bridge, store, TimeProvider.System);
         ObjectReference target = CreateTarget();
         Guid originalSession = target.ProjectSessionId;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
-        Task<ChangePlan> preview = planner.PreviewAsync(target, "New", CancellationToken.None);
-        BridgeRequest request = await bridge.RequestReceived.WaitAsync(TimeSpan.FromSeconds(5));
+        Task<ChangePlan> preview = planner.PreviewAsync(target, "New", cancellationToken);
+        BridgeRequest request = await bridge.RequestReceived.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
 
         target.ProjectSessionId = Guid.NewGuid();
         target.DatabaseIdentifier = 999;
