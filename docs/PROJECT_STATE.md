@@ -45,6 +45,8 @@ The LLM never receives unrestricted EPLAN API access. MCP exposes a closed-world
 - `docs/design/task-9-gate-b-workstation-acceptance.md`
 - `docs/plans/2026-10-26-task-9-gate-b-workstation-acceptance.md`
 - `docs/setup/task9-gate-b-validation.md`
+- `docs/superpowers/specs/2026-10-27-task-10-change-plan-design.md`
+- `docs/superpowers/plans/2026-10-27-task-10-change-plan.md`
 
 ## Verified target workstation
 
@@ -75,7 +77,8 @@ Confirmed through real build/runtime evidence on 2026-10-26 and 2026-10-27:
 - **Tasks 1–9 / M0 read-only bridge:** **PASS and integrated to `main`**.
 - **Task 8 MCP implementation:** merged via PR #21 at `7c84ccfeda6f4ae689375ebdab21486b37b88d2c`; main CI #303 PASS.
 - **Gate B / Task 9 workstation acceptance:** **PASS** on real EPLAN 2.9.4; Issue #22 completed; merged via PR #23 at `fec3eb06708ef4f6906b1daa10d0222b056bd0d1`; main CI #304 and PowerShell Encoding Guard #31 PASS.
-- **Gate C / M1 safe write:** NOT STARTED. Gate B no longer blocks Task 10 planning, but no mutating behavior has been implemented yet.
+- **Task 10 MCP Change Plan lifecycle:** **REPO-SIDE PASS** on `m1/task-10-change-plans`; PR #25 remains unmerged pending explicit approval.
+- **Gate C / M1 safe write:** IN PROGRESS. Task 10 establishes immutable preview state only; no EPLAN mutation or mutating MCP tool exists yet.
 
 ## Current status
 
@@ -88,7 +91,7 @@ Confirmed through real build/runtime evidence on 2026-10-26 and 2026-10-27:
 - [x] Task 7: secured current-user named-pipe LegacyHost.
 - [x] Task 8: .NET 8 stdio MCP read-only tools — merged to `main` via PR #21.
 - [x] Task 9 / Gate B: real MCP-to-EPLAN read-only acceptance including stale-session behavior — PASS and merged to `main` via PR #23.
-- [ ] Task 10: immutable MCP Change Plan state machine for `setFunctionText`.
+- [x] Task 10: immutable MCP Change Plan state machine for `setFunctionText` — repo-side complete on branch `m1/task-10-change-plans`, PR #25.
 - [ ] Task 11: safe Function Text preview/apply in EPLAN.
 - [ ] Task 12 / Gate C: MCP apply/undo and M1 acceptance.
 - [ ] Task 13 / Gate D: final verification and v0.1 packaging.
@@ -107,6 +110,8 @@ xUnit v3 test projects are executable Microsoft Testing Platform applications. A
 Task 8 initially exposed a zero-discovery MCP test configuration. That green-looking run was rejected as invalid evidence. `Audeu.EplanAi.Mcp.Tests` was corrected with `OutputType=Exe` and `TestingPlatformDotnetTestSupport=true`; CI #257 then executed and passed **17/17 MCP tests**.
 
 Task 9 later added a dedicated MCP probe regression suite. Final Task 9 runs execute and pass **6/6 MCP probe tests** in addition to the existing suites. Final merged `main` CI #304 passed the full repository pipeline.
+
+Task 10 expands the MCP suite to **38/38 PASS** while preserving non-zero discovery and the existing Gate-B probe suite at **6/6 PASS**. CI #317 also passed Contracts **20/20**, LegacyHost **45/45**, AddIn **32/32**, MCP build, probe build, PowerShell 5.1 parsing and both EPLAN prerequisite guards.
 
 ## Task 4 — fixed AddIn dispatch — PASS
 
@@ -261,12 +266,44 @@ Final merged verification:
 - `main` CI #304 PASS;
 - PowerShell Encoding Guard #31 PASS.
 
+## Task 10 — immutable MCP Change Plan lifecycle — REPO-SIDE PASS
+
+Canonical issue: #24. Branch: `m1/task-10-change-plans`. PR: #25 (draft until final verification is recorded).
+
+Task 10 introduces no EPLAN write path and no new MCP tool. Its purpose is to make a future write single-use, session-bound and based on an immutable preview.
+
+Implemented:
+
+- `ChangeOperation` defensively snapshots all five fields of `ObjectReference`; callers cannot mutate a stored plan by changing either the source reference or a value returned from `Target`;
+- stable `PLAN_NOT_FOUND` and `PLAN_STALE` protocol errors;
+- singleton in-memory `ChangePlanStore` with synchronized lookup/session validation;
+- atomic `ClaimForApply`: concurrent callers attempting to use one plan produce exactly one success and all later attempts fail with `PLAN_ALREADY_APPLIED`;
+- terminal `previewed -> applied|failed` lifecycle;
+- `FunctionTextChangePlanner` snapshots the target before its first await, validates a maximum of 1024 UTF-16 code units, performs exactly one existing `object.get` request with `Mode = read`, captures displayed old Function Text and stores one immutable `setFunctionText` plan;
+- malformed/non-Function/unknown responses fail closed; known stable bridge errors are preserved;
+- `TimeProvider.System`, store and planner are singleton DI services in the MCP host;
+- external MCP registration remains `.WithTools<EplanReadTools>()`, so discovery still exposes exactly the five read-only M0 tools.
+
+Task 10 TDD evidence:
+
+- immutable-contract RED: CI #306;
+- contract GREEN: CI #308, Contracts **20/20 PASS**;
+- store RED: CI #309; missing ChangePlans types only;
+- store GREEN: CI #311;
+- planner RED: CI #312; missing `FunctionTextChangePlanner` only;
+- planner GREEN: CI #314;
+- DI-composition RED: CI #315; 37/38 MCP tests passed and the newly added unregistered-service test failed;
+- final implementation GREEN: CI #317 — Contracts **20/20**, LegacyHost **45/45**, AddIn **32/32**, MCP **38/38**, MCP probe **6/6**, MCP/probe builds and prerequisite guards PASS;
+- PowerShell Encoding Guard #44 PASS.
+
+Safety boundary after Task 10: **there is still no `change.apply`, no EPLAN Transaction/SafetyPoint/Undo code, and no mutating MCP tool.** Actual mutation belongs to Task 11 and must remain constrained to the approved Function Text flow.
+
 ## Immediate next actions
 
-1. Begin Task 10 design/plan for the immutable in-memory Change Plan state machine supporting only `setFunctionText`.
-2. Preserve the mandatory Preview -> Apply separation: preview may read EPLAN but must not write.
-3. Bind each plan to the current `projectSessionId`, exact Function reference, old value and proposed new value; plans are immutable and single-use.
-4. Keep all future write validation on a disposable/safe EPLAN test project until Gate C passes.
+1. Finalize PR #25 as ready for review; do not merge without explicit user approval.
+2. Begin Task 11 on a stacked branch only after Task 10 is stable: implement the internal safe Function Text apply path in AddIn/EPLAN using session validation, exact old-value validation, UndoStep, SafetyPoint, Transaction, write, read-back verification and rollback-on-failure.
+3. Do not expose Task 11 as a model-callable mutating MCP tool yet; Task 12 owns the MCP preview/apply/undo surface and Gate C workstation acceptance.
+4. Keep all write validation on a disposable/safe EPLAN test project until Gate C passes.
 5. Preserve the closed-world rule: no arbitrary EPLAN property IDs, action names, paths, code or unrestricted DataModel access may become model-controlled.
 
 ## Release 0.1 boundaries
