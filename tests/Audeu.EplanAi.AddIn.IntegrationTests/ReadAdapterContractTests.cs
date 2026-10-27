@@ -84,6 +84,29 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
         }
 
         [Fact]
+        public void Adapter_UsesDisplayedFunctionTextForMultiLangString()
+        {
+            var project = new Project { DatabaseIdentifier = 7, IsValid = true };
+            var function = new Function
+            {
+                DatabaseIdentifier = 7,
+                TypeIdentifier = 27,
+                ObjectIdentifier = 1482,
+                StubStringIdentifier = "Function:1482",
+                IsValid = true,
+                Name = "-A1",
+                Project = project
+            };
+            function.Properties.FUNC_TEXT = new PropertyValue("??_??@Контроллер УСПД БКД-ПК-RF.2;");
+            SelectionSet.StubCurrentProject = project;
+            SelectionSet.StubSelection = new StorableObject[] { function };
+
+            var item = new EplanReadAdapter().GetSelection(7)[0];
+
+            Assert.Equal("Контроллер УСПД БКД-ПК-RF.2", item.FunctionText);
+        }
+
+        [Fact]
         public void Adapter_ResolvesRuntimeStringIdentifier()
         {
             var function = new Function
