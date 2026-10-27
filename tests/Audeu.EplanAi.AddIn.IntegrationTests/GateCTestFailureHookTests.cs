@@ -44,5 +44,13 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
                 "AUDEU_EPLAN_AI_GATE_C_FAIL_NEXT_WRITE",
                 GateCTestFailureHook.EnvironmentVariableName);
         }
+
+        [Fact]
+        public void MarkerFileName_IsFixedAndNotCallerSupplied()
+        {
+            Assert.Equal(
+                "Audeu.EplanAi.GateC.fail-next-write",
+                GateCTestFailureHook.MarkerFileName);
+        }
     }
 }
