@@ -1,4 +1,6 @@
+using System;
 using System.Threading.Tasks;
+using Audeu.EplanAi.Mcp.ChangePlans;
 using Audeu.EplanAi.Mcp.Tools;
 using Audeu.EplanAi.Mcp.Transport;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +23,9 @@ internal static class Program
         });
 
         builder.Services.AddSingleton<IBridgeClient, NamedPipeBridgeClient>();
+        builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+        builder.Services.AddSingleton<ChangePlanStore>();
+        builder.Services.AddSingleton<FunctionTextChangePlanner>();
         builder.Services
             .AddMcpServer()
             .WithStdioServerTransport()
