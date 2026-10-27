@@ -114,6 +114,10 @@ try {
         "-p:EplanApi29Dir=$EplanApi29Dir", "-p:Version=$Version"
     )
 
+    Invoke-DotnetChecked -Description 'Restoring MCP server runtime assets for win-x64...' -Arguments @(
+        'restore', $mcpProject, '-r', 'win-x64'
+    )
+
     Invoke-DotnetChecked -Description 'Publishing MCP server for win-x64 (.NET 8 framework-dependent)...' -Arguments @(
         'publish', $mcpProject, '-c', 'Release', '-r', 'win-x64', '--self-contained', 'false',
         '--no-restore', "-p:Version=$Version", '-o', $mcpStage
