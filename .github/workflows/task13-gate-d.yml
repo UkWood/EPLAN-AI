@@ -1,0 +1,18 @@
+name: Task 13 Gate D
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'm1/task-13-gate-d'
+
+jobs:
+  release-guards:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test Task 13 release builder guards
+        shell: powershell
+        run: .\scripts\test-task13-release-guards.ps1
