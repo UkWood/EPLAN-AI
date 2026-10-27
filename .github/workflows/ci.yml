@@ -54,6 +54,10 @@ jobs:
         shell: powershell
         run: .\scripts\verify-task13-security.ps1
 
+      - name: Test Task 13 release builder guards
+        shell: powershell
+        run: .\scripts\test-task13-release-guards.ps1
+
       - name: Restore and build Contracts
         shell: pwsh
         run: |
