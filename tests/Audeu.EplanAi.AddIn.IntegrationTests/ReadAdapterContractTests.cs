@@ -53,6 +53,7 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
         [Fact]
         public void Adapter_MapsSelectionAndFunctionWhitelist()
         {
+            var project = new Project { DatabaseIdentifier = 7, IsValid = true };
             var page = new Page { DatabaseIdentifier = 7, Name = "=A/1", IsValid = true };
             var function = new Function
             {
@@ -62,11 +63,12 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
                 StubStringIdentifier = "Function:1482",
                 IsValid = true,
                 Name = "-K1",
-                Page = page
+                Page = page,
+                Project = project
             };
             function.Properties.FUNC_TEXT = new PropertyValue("Pump contactor");
             function.Properties.FUNC_IDENTDEVICETAG = new PropertyValue("-K1");
-            SelectionSet.StubCurrentProject = new Project { DatabaseIdentifier = 7, IsValid = true };
+            SelectionSet.StubCurrentProject = project;
             SelectionSet.StubSelection = new StorableObject[] { function };
 
             var item = new EplanReadAdapter().GetSelection(7)[0];
@@ -81,6 +83,29 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
             Assert.Equal("=A/1", item.Page);
             Assert.Equal("Pump contactor", item.FunctionText);
             Assert.Equal("-K1", item.DeviceTag);
+        }
+
+        [Fact]
+        public void Adapter_UsesDisplayedFunctionTextForMultiLangString()
+        {
+            var project = new Project { DatabaseIdentifier = 7, IsValid = true };
+            var function = new Function
+            {
+                DatabaseIdentifier = 7,
+                TypeIdentifier = 27,
+                ObjectIdentifier = 1482,
+                StubStringIdentifier = "Function:1482",
+                IsValid = true,
+                Name = "-A1",
+                Project = project
+            };
+            function.Properties.FUNC_TEXT = new PropertyValue("??_??@Контроллер УСПД БКД-ПК-RF.2;");
+            SelectionSet.StubCurrentProject = project;
+            SelectionSet.StubSelection = new StorableObject[] { function };
+
+            var item = new EplanReadAdapter().GetSelection(7)[0];
+
+            Assert.Equal("Контроллер УСПД БКД-ПК-RF.2", item.FunctionText);
         }
 
         [Fact]

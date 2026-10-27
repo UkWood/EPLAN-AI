@@ -1,0 +1,39 @@
+name: PowerShell Encoding Guard
+
+on:
+  push:
+    branches:
+      - main
+      - 'm0/**'
+  pull_request:
+
+jobs:
+  encoding:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reject non-ASCII PowerShell scripts without UTF-8 BOM
+        shell: powershell
+        run: |
+          $failed = $false
+          Get-ChildItem .\scripts -Filter '*.ps1' -File | ForEach-Object {
+            $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+            $hasUtf8Bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+            $hasNonAscii = $false
+            foreach ($byte in $bytes) {
+              if ($byte -ge 0x80) {
+                $hasNonAscii = $true
+                break
+              }
+            }
+            if ($hasNonAscii -and -not $hasUtf8Bom) {
+              $failed = $true
+              Write-Host "Unsafe Windows PowerShell 5.1 encoding: $($_.FullName) contains non-ASCII bytes without a UTF-8 BOM."
+            }
+          }
+          if ($failed) {
+            throw 'One or more workstation PowerShell scripts can be misdecoded by Windows PowerShell 5.1.'
+          }
+          Write-Host 'PASS: workstation PowerShell scripts are safe for Windows PowerShell 5.1 decoding.'

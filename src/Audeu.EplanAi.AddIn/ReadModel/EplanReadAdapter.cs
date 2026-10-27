@@ -133,7 +133,21 @@ namespace Audeu.EplanAi.AddIn.ReadModel
             try
             {
                 var value = function.Properties.FUNC_TEXT;
-                return value == null ? null : value.ToString();
+                var project = function.Project;
+                if (value == null || project == null || !project.IsValid)
+                {
+                    return null;
+                }
+
+                var translate = new Translate();
+                try
+                {
+                    return translate.GetStringToDisplayInDialogs(project, value.ToMultiLangString());
+                }
+                finally
+                {
+                    translate.Dispose();
+                }
             }
             catch (Exception)
             {

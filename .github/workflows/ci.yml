@@ -102,6 +102,18 @@ jobs:
           dotnet restore .\tests\Audeu.EplanAi.Mcp.Tests\Audeu.EplanAi.Mcp.Tests.csproj
           dotnet test .\tests\Audeu.EplanAi.Mcp.Tests\Audeu.EplanAi.Mcp.Tests.csproj -c Release --no-restore
 
+      - name: Restore and build Task 9 MCP workstation probe
+        shell: pwsh
+        run: |
+          dotnet restore .\test-support\Audeu.EplanAi.McpProbe\Audeu.EplanAi.McpProbe.csproj
+          dotnet build .\test-support\Audeu.EplanAi.McpProbe\Audeu.EplanAi.McpProbe.csproj -c Release --no-restore
+
+      - name: Restore and test Task 9 MCP workstation probe
+        shell: pwsh
+        run: |
+          dotnet restore .\tests\Audeu.EplanAi.McpProbe.Tests\Audeu.EplanAi.McpProbe.Tests.csproj
+          dotnet test .\tests\Audeu.EplanAi.McpProbe.Tests\Audeu.EplanAi.McpProbe.Tests.csproj -c Release --no-restore
+
       - name: Verify AddIn fails clearly without EPLAN API path
         shell: pwsh
         run: |
