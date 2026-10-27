@@ -20,6 +20,15 @@ internal static class Program
     {
         try
         {
+            if (args.Length >= 2
+                && string.Equals(args[0], "--mode", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(args[1], "gate-c", StringComparison.OrdinalIgnoreCase))
+            {
+                GateCProbeOptions gateCOptions = GateCProbeOptions.Parse(args.Skip(2).ToArray());
+                await GateCProbeRunner.RunAsync(gateCOptions).ConfigureAwait(false);
+                return 0;
+            }
+
             Options options = Options.Parse(args);
             await RunAsync(options).ConfigureAwait(false);
             return 0;

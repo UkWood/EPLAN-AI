@@ -14,7 +14,9 @@ namespace Audeu.EplanAi.AddIn.Dispatch
         {
             var sessions = new ProjectSessionTracker();
             var readOperations = new ReadOperationService(new EplanReadAdapter(), sessions);
-            var writeOperations = new WriteOperationService(new EplanWriteAdapter(), sessions);
+            var writeOperations = new WriteOperationService(
+                new EplanWriteAdapter(new GateCTestFailureHook()),
+                sessions);
             _operations = CreateOperations(readOperations, writeOperations);
         }
 

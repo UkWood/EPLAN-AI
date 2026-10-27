@@ -24,7 +24,7 @@ public sealed class McpHostCompositionTests
     }
 
     [Fact]
-    public void CreateBuilder_RegistersTask10ChangePlanServicesAsSingletons()
+    public void CreateBuilder_RegistersTask10AndTask12ChangePlanServicesAsSingletons()
     {
         var builder = Program.CreateBuilder(Array.Empty<string>());
 
@@ -33,10 +33,13 @@ public sealed class McpHostCompositionTests
         ChangePlanStore secondStore = services.GetRequiredService<ChangePlanStore>();
         FunctionTextChangePlanner firstPlanner = services.GetRequiredService<FunctionTextChangePlanner>();
         FunctionTextChangePlanner secondPlanner = services.GetRequiredService<FunctionTextChangePlanner>();
+        ChangePlanApplyService firstApply = services.GetRequiredService<ChangePlanApplyService>();
+        ChangePlanApplyService secondApply = services.GetRequiredService<ChangePlanApplyService>();
         TimeProvider clock = services.GetRequiredService<TimeProvider>();
 
         Assert.Same(firstStore, secondStore);
         Assert.Same(firstPlanner, secondPlanner);
+        Assert.Same(firstApply, secondApply);
         Assert.Same(TimeProvider.System, clock);
     }
 
