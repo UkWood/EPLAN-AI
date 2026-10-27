@@ -20,15 +20,16 @@ No write operation is used.
 
 1. Checkout `m0/task-9-gate-b`.
 2. EPLAN Electric P8 2.9.4 is installed and can be started normally.
-3. Use the disposable/safe test project. Current known acceptance project:
+3. Before build verification, close EPLAN completely and stop any persistent LegacyHost. This guarantees that the current AddIn DLL is rebuilt from the checked-out source and is loaded fresh on the next EPLAN start.
+4. Use the disposable/safe test project. Current known acceptance project:
    - name: `УСПД Жуковский ПНС`;
    - expected pages: `7`.
-4. In EPLAN select **exactly one Function** with a known, non-empty Function Text.
-5. Note the Function Text exactly. The probe compares it ordinally, including spaces and non-ASCII characters.
+5. In EPLAN select **exactly one Function** with a known, non-empty Function Text.
+6. Note the Function Text exactly. The probe compares it ordinally, including spaces and non-ASCII characters.
 
 ## Build verification
 
-In PowerShell:
+With EPLAN and LegacyHost stopped, run in PowerShell:
 
 ```powershell
 cd E:\EPLAN\REPO\EPLAN-AI
@@ -38,13 +39,20 @@ git pull --ff-only origin m0/task-9-gate-b
 .\scripts\verify-task9-build.ps1
 ```
 
-The script deliberately prepends `C:\Program Files\dotnet` when present because this workstation has previously resolved the x86 `dotnet.exe` first. It requires a visible .NET 8 SDK, builds LegacyHost against the real EPLAN 2.9.4 RemoteClient assemblies, then builds the MCP server and official Task 9 probe.
+The script deliberately prepends `C:\Program Files\dotnet` when present because this workstation has previously resolved the x86 `dotnet.exe` first. It requires a visible .NET 8 SDK and then:
 
-Expected final lines include three PASS entries for LegacyHost, MCP server and Task 9 probe.
+- builds the AddIn against the real EPLAN 2.9.4 API assemblies;
+- builds LegacyHost against the real EPLAN 2.9.4 RemoteClient assemblies;
+- builds the MCP server;
+- builds the official Task 9 MCP probe.
+
+Expected final lines include four PASS entries for AddIn, LegacyHost, MCP server and Task 9 probe.
+
+The AddIn reads `FUNC_TEXT` as an EPLAN `MultiLangString` and converts it with `Translate.GetStringToDisplayInDialogs(...)`. This is intentional: the MCP contract exposes the text displayed to the user, not EPLAN's internal multilingual serialization such as `??_??@text;`.
 
 ## Window 1 — persistent LegacyHost
 
-Leave EPLAN open with the safe project active and the chosen Function selected.
+Start EPLAN normally, open the safe project and select the chosen Function. Then run:
 
 ```powershell
 cd E:\EPLAN\REPO\EPLAN-AI
@@ -79,7 +87,7 @@ Before asking you to touch EPLAN, the probe must report PASS for:
 - active project identity and session;
 - page list/count;
 - exactly one selected `Function`;
-- `eplan_get_object` with exact Function Text match.
+- `eplan_get_object` with exact displayed Function Text match.
 
 If any item differs, the probe exits non-zero and Gate B does not pass.
 
@@ -134,7 +142,7 @@ Gate B is PASS only when all are true:
 2. EPLAN status is ready / protocol 1.0;
 3. expected active project is returned;
 4. expected page count/list is returned;
-5. selected Function and exact Function Text are returned;
+5. selected Function and exact displayed Function Text are returned;
 6. closed-project call returns `NO_ACTIVE_PROJECT`;
 7. reopened project gets a fresh session;
 8. old object reference returns `SESSION_STALE`;
