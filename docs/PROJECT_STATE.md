@@ -72,11 +72,10 @@ Confirmed through real build/runtime evidence on 2026-10-26 and 2026-10-27:
 - **Gate A1 — development environment:** PASS.
 - **Gate A2 — AddIn runtime / real DataModel compatibility:** PASS.
 - **Gate A2 — RemoteClient real assembly/runtime compatibility:** PASS.
-- **Tasks 1–7 integration:** PASS and merged to `main`.
-- **Task 8 repo-side MCP implementation:** PASS; PR #21 remains open pending explicit merge approval.
-- **Gate B / M0 read-only bridge:** **PASS** on real EPLAN 2.9.4 workstation.
-- **Task 9 workstation acceptance:** PASS; Issue #22 completed; PR #23 ready for review and stacked behind PR #21.
-- **Gate C / M1 safe write:** NOT STARTED. Gate B no longer blocks planning, but no mutating behavior has been implemented or authorized yet.
+- **Tasks 1–9 / M0 read-only bridge:** **PASS and integrated to `main`**.
+- **Task 8 MCP implementation:** merged via PR #21 at `7c84ccfeda6f4ae689375ebdab21486b37b88d2c`; main CI #303 PASS.
+- **Gate B / Task 9 workstation acceptance:** **PASS** on real EPLAN 2.9.4; Issue #22 completed; merged via PR #23 at `fec3eb06708ef4f6906b1daa10d0222b056bd0d1`; main CI #304 and PowerShell Encoding Guard #31 PASS.
+- **Gate C / M1 safe write:** NOT STARTED. Gate B no longer blocks Task 10 planning, but no mutating behavior has been implemented yet.
 
 ## Current status
 
@@ -87,11 +86,19 @@ Confirmed through real build/runtime evidence on 2026-10-26 and 2026-10-27:
 - [x] Task 5: project session + read-only EPLAN inspection.
 - [x] Task 6: LegacyHost RemoteClient gateway.
 - [x] Task 7: secured current-user named-pipe LegacyHost.
-- [x] Task 8: .NET 8 stdio MCP read-only tools — repo-side implementation complete on `m0/task-8-mcp-readonly`, PR #21 open.
-- [x] Task 9 / Gate B: real MCP-to-EPLAN read-only acceptance including stale-session behavior — PASS on 2026-10-27.
-- [ ] M1 / Gate C: Function Text Preview -> Apply -> Verify -> Undo/Rollback.
+- [x] Task 8: .NET 8 stdio MCP read-only tools — merged to `main` via PR #21.
+- [x] Task 9 / Gate B: real MCP-to-EPLAN read-only acceptance including stale-session behavior — PASS and merged to `main` via PR #23.
+- [ ] Task 10: immutable MCP Change Plan state machine for `setFunctionText`.
+- [ ] Task 11: safe Function Text preview/apply in EPLAN.
+- [ ] Task 12 / Gate C: MCP apply/undo and M1 acceptance.
+- [ ] Task 13 / Gate D: final verification and v0.1 packaging.
 
 Tasks 1–7 were integrated to `main` at merge commit `1064c841d0b33f29b649b03c7dd902fd3f4a7bbd`; main CI #239 (`40360507085`) passed after integration.
+
+Tasks 8–9 completed M0 integration on 2026-10-27:
+
+- PR #21 -> `main` merge commit `7c84ccfeda6f4ae689375ebdab21486b37b88d2c`; main CI #303 PASS; Issue #20 completed.
+- PR #23 -> `main` merge commit `fec3eb06708ef4f6906b1daa10d0222b056bd0d1`; main CI #304 PASS; PowerShell Encoding Guard #31 PASS; Issue #22 completed.
 
 ## Test runner ruling
 
@@ -99,7 +106,7 @@ xUnit v3 test projects are executable Microsoft Testing Platform applications. A
 
 Task 8 initially exposed a zero-discovery MCP test configuration. That green-looking run was rejected as invalid evidence. `Audeu.EplanAi.Mcp.Tests` was corrected with `OutputType=Exe` and `TestingPlatformDotnetTestSupport=true`; CI #257 then executed and passed **17/17 MCP tests**.
 
-Task 9 later added a dedicated MCP probe regression suite. Final pre-state-update CI #299 (`40495431942`) executed and passed **6/6 MCP probe tests** in addition to the existing suites.
+Task 9 later added a dedicated MCP probe regression suite. Final Task 9 runs execute and pass **6/6 MCP probe tests** in addition to the existing suites. Final merged `main` CI #304 passed the full repository pipeline.
 
 ## Task 4 — fixed AddIn dispatch — PASS
 
@@ -166,9 +173,9 @@ PASS: clean Ctrl+C / RemoteClient shutdown.
 
 Task 7 request-ID camelCase regression was reproduced with RED coverage and fixed before workstation acceptance.
 
-## Task 8 — MCP read-only tools — REPO-SIDE PASS
+## Task 8 — MCP read-only tools — PASS / MERGED
 
-Canonical issue: #20. Branch: `m0/task-8-mcp-readonly`. PR: #21.
+Canonical issue: #20 (completed). Branch: `m0/task-8-mcp-readonly`. PR: #21 (merged to `main`).
 
 ### MCP transport
 
@@ -201,21 +208,20 @@ Successful bridge `DataJson` is returned unchanged as compact JSON text. Stable 
 ### Task 8 TDD / CI evidence
 
 - pipe codec RED: CI #245; only missing MCP transport namespace after test-import correction;
-- pipe codec implementation: head `9013e1413ae3b67366bb0bf96e43c39864023555`;
 - named-pipe client RED: CI #248; only missing `NamedPipeBridgeClient`;
-- named-pipe client implementation: `95632a0614948899b0cec6ceb3a72127a36caf74`;
 - tool mapping RED: CI #251; only missing MCP Tools namespace;
-- tool implementation: `fe8a6473a9d4e41b8171137d44a86ee06535c1d3`;
 - host composition RED: CI #253; only missing `Program.CreateBuilder`;
-- host implementation initially exposed missing `Microsoft.Extensions.Hosting` reference in CI #254; fixed with pinned `Microsoft.Extensions.Hosting 8.0.0`;
+- host dependency issue exposed by CI #254 and fixed with pinned `Microsoft.Extensions.Hosting` 8.0.0;
 - test-runner audit rejected zero-discovery CI #256 as invalid test evidence;
-- corrected xUnit v3 runner CI #257: Contracts **18/18**, LegacyHost **45/45**, AddIn **31/31**, MCP **17/17**, MCP build PASS, both prerequisite guards PASS.
+- corrected xUnit v3 runner CI #257: Contracts **18/18**, LegacyHost **45/45**, AddIn **31/31**, MCP **17/17**, MCP build PASS, both prerequisite guards PASS;
+- final Task 8 branch CI #261 PASS;
+- post-merge `main` CI #303 PASS.
 
-Task 8 real MCP-to-EPLAN runtime acceptance is now proven by Task 9 / Gate B.
+Task 8 real MCP-to-EPLAN runtime acceptance is proven by Task 9 / Gate B.
 
-## Task 9 — Gate B real MCP-to-EPLAN acceptance — PASS
+## Task 9 — Gate B real MCP-to-EPLAN acceptance — PASS / MERGED
 
-Canonical issue: #22 (completed). Branch: `m0/task-9-gate-b`. PR: #23, ready for review, stacked on PR #21.
+Canonical issue: #22 (completed). Branch: `m0/task-9-gate-b`. PR: #23 (merged to `main`).
 
 The workstation probe uses the official `ModelContextProtocol` 2.3.0 `StdioClientTransport` and `McpClient`; it does not load or reference EPLAN assemblies.
 
@@ -242,7 +248,7 @@ PASS: LegacyHost clean Ctrl+C shutdown
 2. **EPLAN multilingual Function Text representation.** `FUNC_TEXT.ToString()` exposed internal `??_??@...;` serialization. `EplanReadAdapter` now uses `PropertyValue.ToMultiLangString()` and `Translate.GetStringToDisplayInDialogs(project, ...)` so the bridge exposes the displayed EPLAN text. Regression coverage uses the exact real value `??_??@Контроллер УСПД БКД-ПК-RF.2;`.
 3. **Official MCP SDK tool-error wrapper.** The SDK wraps stable bridge errors with text such as `An error occurred invoking 'eplan_list_pages': NO_ACTIVE_PROJECT: ...`. Probe matching now validates the stable code without depending on the wrapper prefix. The dedicated regression suite covers raw/wrapped `NO_ACTIVE_PROJECT`, wrapped `SESSION_STALE` and false-positive rejection.
 
-Final pre-state-update CI #299 (`40495431942`) on head `9fc3e0f527ab68aab7573160c864c06e09824bb2`:
+Final merged verification:
 
 - Contracts **18/18 PASS**;
 - LegacyHost **45/45 PASS**;
@@ -251,14 +257,16 @@ Final pre-state-update CI #299 (`40495431942`) on head `9fc3e0f527ab68aab7573160
 - MCP probe regressions **6/6 PASS**;
 - Task 9 probe build PASS;
 - Windows PowerShell 5.1 validation PASS;
-- AddIn/LegacyHost prerequisite guards PASS.
+- AddIn/LegacyHost prerequisite guards PASS;
+- `main` CI #304 PASS;
+- PowerShell Encoding Guard #31 PASS.
 
 ## Immediate next actions
 
-1. Keep PR #21 and PR #23 unmerged until explicit user approval.
-2. When merge is authorized, integrate the stacked read-only chain in the correct order and verify fresh CI on `main`.
-3. After read-only integration, begin Task 10 / Gate C design for the single safe write flow: Function Text Preview -> Apply -> Verify -> Undo/Rollback.
-4. Keep writes constrained to the disposable/safe test project until Gate C itself is proven.
+1. Begin Task 10 design/plan for the immutable in-memory Change Plan state machine supporting only `setFunctionText`.
+2. Preserve the mandatory Preview -> Apply separation: preview may read EPLAN but must not write.
+3. Bind each plan to the current `projectSessionId`, exact Function reference, old value and proposed new value; plans are immutable and single-use.
+4. Keep all future write validation on a disposable/safe EPLAN test project until Gate C passes.
 5. Preserve the closed-world rule: no arbitrary EPLAN property IDs, action names, paths, code or unrestricted DataModel access may become model-controlled.
 
 ## Release 0.1 boundaries
