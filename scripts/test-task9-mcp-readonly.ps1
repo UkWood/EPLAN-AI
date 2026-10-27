@@ -1,5 +1,5 @@
 param(
-    [string]$ExpectedProjectName = 'УСПД Жуковский ПНС',
+    [string]$ExpectedProjectName = '',
     [int]$ExpectedPageCount = 7,
     [string]$ExpectedFunctionText = ''
 )
@@ -15,6 +15,11 @@ if (Test-Path $x64Dotnet) {
 
 if (-not (Get-Process -Name 'EPLAN' -ErrorAction SilentlyContinue)) {
     throw 'EPLAN.exe is not running. Start EPLAN normally, open the safe test project, select exactly one Function, and leave EPLAN running.'
+}
+
+if ([string]::IsNullOrEmpty($ExpectedProjectName)) {
+    $ExpectedProjectName = [System.Text.Encoding]::UTF8.GetString(
+        [System.Convert]::FromBase64String('0KPQodCf0JQg0JbRg9C60L7QstGB0LrQuNC5INCf0J3QoQ=='))
 }
 
 if ([string]::IsNullOrEmpty($ExpectedFunctionText)) {
