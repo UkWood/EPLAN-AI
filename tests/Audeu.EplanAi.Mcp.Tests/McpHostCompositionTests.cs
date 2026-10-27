@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Audeu.EplanAi.Mcp.ChangePlans;
 using Audeu.EplanAi.Mcp.Transport;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -20,6 +21,23 @@ public sealed class McpHostCompositionTests
             descriptor => descriptor.ServiceType.Namespace?.StartsWith(
                 "ModelContextProtocol",
                 StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public void CreateBuilder_RegistersTask10ChangePlanServicesAsSingletons()
+    {
+        var builder = Program.CreateBuilder(Array.Empty<string>());
+
+        using var services = builder.Services.BuildServiceProvider();
+        ChangePlanStore firstStore = services.GetRequiredService<ChangePlanStore>();
+        ChangePlanStore secondStore = services.GetRequiredService<ChangePlanStore>();
+        FunctionTextChangePlanner firstPlanner = services.GetRequiredService<FunctionTextChangePlanner>();
+        FunctionTextChangePlanner secondPlanner = services.GetRequiredService<FunctionTextChangePlanner>();
+        TimeProvider clock = services.GetRequiredService<TimeProvider>();
+
+        Assert.Same(firstStore, secondStore);
+        Assert.Same(firstPlanner, secondPlanner);
+        Assert.Same(TimeProvider.System, clock);
     }
 
     [Fact]
