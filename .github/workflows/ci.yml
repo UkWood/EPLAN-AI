@@ -42,6 +42,10 @@ jobs:
           }
           Write-Host 'All workstation PowerShell scripts parse under Windows PowerShell 5.1.'
 
+      - name: Test Task 13 package layout contract
+        shell: powershell
+        run: .\scripts\test-task13-package-layout.ps1
+
       - name: Restore and build Contracts
         shell: pwsh
         run: |
