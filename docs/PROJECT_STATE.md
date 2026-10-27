@@ -64,8 +64,8 @@ Confirmed through real build/runtime evidence on 2026-10-26 and 2026-10-27:
 - **Gate A2 — RemoteClient real assembly/runtime compatibility:** PASS.
 - **Gate B / M0 read-only bridge:** PASS and integrated to `main`.
 - **Gate C / M1 safe write:** PASS and integrated to `main`.
-- **Task 13 repo-side packaging/security implementation:** IN PROGRESS on branch `m1/task-13-gate-d`, draft PR #31.
-- **Gate D / final real-EPLAN release verification:** PENDING workstation run of `scripts\verify-task13-gate-d.ps1`.
+- **Task 13 repo-side packaging/security implementation:** **PASS** on branch `m1/task-13-gate-d`; draft PR #31 remains unmerged.
+- **Gate D / final real-EPLAN release verification:** **PENDING** workstation run of `scripts\verify-task13-gate-d.ps1`.
 
 Gate D must not be marked PASS until the verified EPLAN 2.9.4 workstation builds the release bundle, verifies its hashes, and that evidence is recorded.
 
@@ -78,8 +78,8 @@ Gate D must not be marked PASS until the verified EPLAN 2.9.4 workstation builds
 - [x] Task 13 automated security verifier + positive/negative fixture contract.
 - [x] Task 13 fail-closed release builder guards.
 - [x] Task 13 real-EPLAN release builder and final Gate D workstation verifier implemented.
-- [x] v0.1 installation, troubleshooting, security and release-note documentation drafted.
-- [ ] Final fresh branch CI after all Task 13 documentation/workflow integration.
+- [x] v0.1 installation, troubleshooting, security and release-note documentation.
+- [x] Consolidated repo-side CI with Task 13 guards plus all M0/M1 tests.
 - [ ] Real workstation Gate D build/package/hash verification.
 - [ ] Record Gate D evidence, mark PR #31 ready, then await explicit merge approval.
 - [ ] After merge and separate explicit release approval, create tag `eplan-ai-bridge-v0.1.0`.
@@ -240,7 +240,7 @@ The combined archive contains `addin`, `legacyhost`, `mcp`, embedded release doc
 
 AddIn packaging rejects redistribution of EPLAN AF/Base/DataModel/HEServices DLLs. MCP is published framework-dependent for `win-x64` and .NET 8. LegacyHost remains a separate local gateway component.
 
-### Task 13 automated verification evidence so far
+### Task 13 automated verification evidence
 
 TDD package cycle:
 
@@ -258,6 +258,24 @@ TDD release-guard cycle:
 - RED Task 13 Gate D run #1: failed exactly because `build-task13-release.ps1` did not exist;
 - GREEN Task 13 Gate D run #6 on head `99e18a611d590c7ef4ebb0274830d029dd45ad36`: release guard contract PASS.
 
+Final consolidated repo-side verification on head `9125626de77c785df20ba505402d73ec9a01bc1b`:
+
+- CI #381 SUCCESS;
+- PowerShell Encoding Guard #108 SUCCESS;
+- Windows PowerShell 5.1 parse PASS;
+- Task 13 package layout/checksum contract PASS;
+- Task 13 security fixture contract PASS;
+- current `src` Gate D security review PASS across 56 source files / 2 MCP tool files;
+- Task 13 release builder guard contract PASS;
+- Contracts **20/20 PASS**;
+- LegacyHost **45/45 PASS**;
+- AddIn integration/stub **64/64 PASS**;
+- MCP **54/54 PASS**;
+- MCP probe **17/17 PASS**;
+- AddIn/LegacyHost missing-EPLAN-path prerequisite guards PASS.
+
+A direct compare against `main` confirms Task 13 changes no files under `src/`; changes are limited to CI, release/build scripts and documentation.
+
 The final release builder:
 
 - requires the verified real EPLAN 2.9.4 API assembly set;
@@ -273,7 +291,7 @@ The final release builder:
 
 ## Immediate next action
 
-Complete fresh repo-side CI on the final Task 13 branch head. Then run real Gate D on the verified workstation with EPLAN and LegacyHost stopped:
+Run real Gate D on the verified workstation with **EPLAN and persistent LegacyHost stopped**:
 
 ```powershell
 cd E:\EPLAN\REPO\EPLAN-AI
@@ -290,7 +308,14 @@ PASS: Task 13 v0.1 release bundle built and verified: ...
 PASS: Gate D repository and real-EPLAN release verification completed successfully.
 ```
 
-After that, record `SHA256SUMS.txt` and Gate D output in Issue #30 / PR #31 / this file. Only then may Gate D become PASS and PR #31 become ready for review.
+Then capture:
+
+```powershell
+Get-Content .\artifacts\release\eplan-ai-bridge-v0.1.0\SHA256SUMS.txt
+Get-FileHash .\artifacts\release\eplan-ai-bridge-v0.1.0\*.zip -Algorithm SHA256 | Sort-Object Path
+```
+
+Record the Gate D output and SHA-256 values in Issue #30 / PR #31 / this file. Only then may Gate D become PASS and PR #31 become ready for review.
 
 ## Release 0.1 boundaries
 
