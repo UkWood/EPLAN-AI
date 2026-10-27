@@ -197,8 +197,8 @@ internal static class Program
 
         string text = SingleText(result);
         Require(result.IsError is true, $"{toolName} unexpectedly succeeded; expected MCP tool error {expectedPrefix}");
-        Require(text.StartsWith(expectedPrefix, StringComparison.Ordinal),
-            $"{toolName} returned unexpected MCP error. Expected prefix '{expectedPrefix}', got '{text}'.");
+        Require(ToolErrorMatcher.Matches(text, expectedPrefix),
+            $"{toolName} returned unexpected MCP error. Expected stable error '{expectedPrefix}', got '{text}'.");
     }
 
     private static string SingleText(CallToolResult result)
