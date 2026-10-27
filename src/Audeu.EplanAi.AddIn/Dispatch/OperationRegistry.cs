@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Audeu.EplanAi.AddIn.ReadModel;
+using Audeu.EplanAi.AddIn.WriteModel;
 using Audeu.EplanAi.Contracts;
 
 namespace Audeu.EplanAi.AddIn.Dispatch
@@ -15,6 +16,11 @@ namespace Audeu.EplanAi.AddIn.Dispatch
         }
 
         public OperationRegistry(ReadOperationService readOperations)
+            : this(readOperations, null)
+        {
+        }
+
+        public OperationRegistry(ReadOperationService readOperations, WriteOperationService writeOperations)
         {
             if (readOperations == null)
             {
@@ -29,6 +35,12 @@ namespace Audeu.EplanAi.AddIn.Dispatch
                 { "selection.get", readOperations.GetSelection },
                 { "object.get", readOperations.GetObject }
             };
+
+            if (writeOperations != null)
+            {
+                _operations.Add("change.apply", writeOperations.Apply);
+                _operations.Add("change.undoLast", writeOperations.UndoLast);
+            }
         }
 
         public bool TryResolve(string operation, out Func<BridgeRequest, BridgeResponse> handler)
