@@ -53,6 +53,7 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
         [Fact]
         public void Adapter_MapsSelectionAndFunctionWhitelist()
         {
+            var project = new Project { DatabaseIdentifier = 7, IsValid = true };
             var page = new Page { DatabaseIdentifier = 7, Name = "=A/1", IsValid = true };
             var function = new Function
             {
@@ -62,11 +63,12 @@ namespace Audeu.EplanAi.AddIn.IntegrationTests
                 StubStringIdentifier = "Function:1482",
                 IsValid = true,
                 Name = "-K1",
-                Page = page
+                Page = page,
+                Project = project
             };
             function.Properties.FUNC_TEXT = new PropertyValue("Pump contactor");
             function.Properties.FUNC_IDENTDEVICETAG = new PropertyValue("-K1");
-            SelectionSet.StubCurrentProject = new Project { DatabaseIdentifier = 7, IsValid = true };
+            SelectionSet.StubCurrentProject = project;
             SelectionSet.StubSelection = new StorableObject[] { function };
 
             var item = new EplanReadAdapter().GetSelection(7)[0];
