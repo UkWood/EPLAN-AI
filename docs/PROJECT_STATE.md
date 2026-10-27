@@ -95,7 +95,7 @@ Confirmed through real build/runtime evidence on 2026-10-26 and 2026-10-27:
 - **Gate B / Task 9 real MCP-to-EPLAN read-only acceptance:** PASS and integrated to `main`.
 - **Task 10 immutable Change Plan lifecycle:** REPO-SIDE PASS; PR #25 ready, unmerged pending explicit approval.
 - **Task 11 internal safe Function Text write boundary:** REPO-SIDE PASS; PR #27 ready, unmerged pending explicit approval.
-- **Task 12 MCP preview/apply/undo surface:** REPO-SIDE PASS; PR #29 ready, unmerged pending explicit approval.
+- **Task 12 MCP preview/apply/undo surface:** **PASS**; Issue #28 completed; PR #29 ready, unmerged pending explicit approval.
 - **Gate C / M1 safe write:** **PASS on real EPLAN 2.9.4** using a disposable project copy.
 - **Gate D / Task 13 final verification and v0.1 packaging:** NOT STARTED.
 
@@ -112,7 +112,7 @@ Confirmed through real build/runtime evidence on 2026-10-26 and 2026-10-27:
 - [x] Task 9 / Gate B: real MCP-to-EPLAN read-only acceptance — PASS and merged via PR #23.
 - [x] Task 10: immutable MCP Change Plan state machine for `setFunctionText` — repo-side complete, PR #25.
 - [x] Task 11: internal safe Function Text apply/undo path in AddIn/EPLAN boundary — repo-side complete, PR #27.
-- [x] Task 12 / Gate C: MCP preview/apply/undo tools plus real safe-write acceptance — PASS, PR #29.
+- [x] Task 12 / Gate C: MCP preview/apply/undo tools plus real safe-write acceptance — PASS, Issue #28 completed, PR #29.
 - [ ] Task 13 / Gate D: final verification, integration and v0.1 packaging.
 
 ## Integrated M0 history
@@ -211,9 +211,9 @@ Safety properties:
 
 Final Task 11 code evidence: Contracts **20/20**, LegacyHost **45/45**, AddIn **60/60**, MCP **38/38**, MCP probe **6/6**, builds, PowerShell 5.1 parse validation and EPLAN prerequisite guards PASS.
 
-## Task 12 — MCP safe write surface — REPO-SIDE PASS
+## Task 12 — MCP safe write surface — PASS
 
-Canonical issue: #28. Branch: `m1/task-12-gate-c`. PR: #29 (stacked on Task 11; ready for review; unmerged pending explicit approval).
+Canonical issue: #28 (completed). Branch: `m1/task-12-gate-c`. PR: #29 (stacked on Task 11; ready for review; unmerged pending explicit approval).
 
 Exactly three approved model-callable tools were added:
 
@@ -239,13 +239,13 @@ Gate C workstation automation:
 - marker is not an MCP parameter and cannot be used for arbitrary mutation;
 - marker is consumed before the deliberate pre-commit failure and cleaned in `finally`.
 
-Final repo-side Task 12 head before workstation evidence:
+Final repo-side Task 12 code head before workstation evidence:
 
 ```text
 5a70254bc7328de488d67ba9e087603cd64f3559
 ```
 
-Verification:
+Repo-side verification:
 
 - CI #354 SUCCESS;
 - PowerShell Encoding Guard #81 SUCCESS;
@@ -257,6 +257,8 @@ Verification:
 - MCP/probe builds PASS;
 - Windows PowerShell 5.1 parse validation PASS;
 - AddIn/LegacyHost prerequisite guards PASS.
+
+Gate C evidence commit `92f86ddca882004c04311309b575e81d98d0bc33` was then verified by CI #355 SUCCESS and PowerShell Encoding Guard #82 SUCCESS.
 
 ## Gate C real workstation acceptance — PASS
 
@@ -316,11 +318,10 @@ This proves on the real EPLAN 2.9.4 workstation that:
 
 ## Immediate next actions
 
-1. Close Issue #28 as completed after this Gate C evidence commit is green in CI.
-2. Keep PR #25, PR #27 and PR #29 unmerged until explicit user approval.
-3. After approval, integrate the stacked M1 chain in order: Task 10 -> Task 11 -> Task 12, retargeting/checking each PR against the newly updated base and requiring fresh CI after each merge.
-4. Start Task 13 / Gate D only after M1 integration: final verification, release documentation and v0.1 packaging.
-5. Preserve the closed-world rule; do not expand v0.1 into arbitrary EPLAN writes.
+1. Keep PR #25, PR #27 and PR #29 unmerged until explicit user approval.
+2. After approval, integrate the stacked M1 chain in order: Task 10 -> Task 11 -> Task 12, retargeting/checking each PR against the newly updated base and requiring fresh CI after each merge.
+3. Start Task 13 / Gate D only after M1 integration: final verification, release documentation and v0.1 packaging.
+4. Preserve the closed-world rule; do not expand v0.1 into arbitrary EPLAN writes.
 
 ## Release 0.1 boundaries
 
